@@ -1,2 +1,2 @@
 # KahootBackend
-WAT PWSI group project, backend
+WAT PZ group project, backend
