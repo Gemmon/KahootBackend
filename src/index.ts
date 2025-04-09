@@ -3,6 +3,8 @@ import cors from "@fastify/cors"
 import { createServer } from "http";
 import { Server } from "socket.io";
 
+import auth from "./routes/auth.js";
+
 var server: ReturnType<typeof createServer>;
 var io;
 
@@ -22,6 +24,8 @@ const fastify = Fastify({
 fastify.register(cors, {
   origin: true
 })
+
+fastify.register(auth)
 
 fastify.get("/", async (request, reply) => {
   return { hello: "world" };

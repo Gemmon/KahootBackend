@@ -14,9 +14,10 @@
   "type": "module",
   "dependencies": {
     "@fastify/cors": "^11.0.1",
+    "@prisma/client": "^6.6.0",
     "dotenv": "^16.4.5",
     "fastify": "^5.2.2",
-    "prisma": "^6.5.0",
+    "prisma": "^6.6.0",
     "socket.io": "^4.8.1"
   },
   "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"

@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,4 +5,166 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model Answer {
+  id          Int      @id @unique(map: "id")
+  question_id Int
+  content     String   @db.Text
+  is_correct  Boolean
+  Question    Question @relation(fields: [question_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Answer_ibfk_1")
+
+  @@index([question_id], map: "question_id")
+}
+
+model Comment {
+  id         Int       @id @unique(map: "id")
+  quiz_id    Int?
+  user_id    Int?
+  content    String?   @db.Text
+  created_at DateTime? @db.DateTime(0)
+  is_removed Boolean?
+  Quiz       Quiz?     @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Comment_ibfk_1")
+  User       User?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Comment_ibfk_2")
+  Report     Report[]
+
+  @@index([quiz_id], map: "quiz_id")
+  @@index([user_id], map: "user_id")
+}
+
+model Favourite {
+  id      Int  @id @unique(map: "id")
+  user_id Int
+  quiz_id Int
+  Quiz    Quiz @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Favourite_ibfk_1")
+  User    User @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Favourite_ibfk_2")
+
+  @@index([quiz_id], map: "quiz_id")
+  @@index([user_id], map: "user_id")
+}
+
+model Game {
+  id          Int           @id @unique(map: "id")
+  quiz_id     Int
+  host_id     Int
+  started_at  DateTime      @db.DateTime(0)
+  finished_at DateTime?     @db.DateTime(0)
+  User        User          @relation(fields: [host_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_ibfk_1")
+  Quiz        Quiz          @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_ibfk_2")
+  Game_player Game_player[]
+
+  @@index([host_id], map: "host_id")
+  @@index([quiz_id], map: "quiz_id")
+}
+
+model Game_player {
+  id         Int       @id @unique(map: "id")
+  game_id    Int
+  user_id    Int?
+  guest_name String?   @db.VarChar(500)
+  score      Int?
+  played_at  DateTime? @db.DateTime(0)
+  Game       Game      @relation(fields: [game_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_player_ibfk_1")
+  User       User?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_player_ibfk_2")
+
+  @@index([game_id], map: "game_id")
+  @@index([user_id], map: "user_id")
+}
+
+model Question {
+  id              Int      @id @unique(map: "id")
+  quiz_id         Int
+  content         String?  @db.Text
+  partial_points  Boolean?
+  negative_points Boolean?
+  max_points      Int
+  Answer          Answer[]
+  Quiz            Quiz     @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Question_ibfk_1")
+
+  @@index([quiz_id], map: "quiz_id")
+}
+
+model Quiz {
+  id          Int         @id @unique(map: "id")
+  titile      String      @db.VarChar(500)
+  description String      @db.Text
+  created_by  Int
+  is_public   Boolean
+  created_at  DateTime    @db.DateTime(0)
+  is_removed  Boolean?
+  Comment     Comment[]
+  Favourite   Favourite[]
+  Game        Game[]
+  Question    Question[]
+  User        User        @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Quiz_ibfk_1")
+  Quiz_tag    Quiz_tag[]
+  Rating      Rating[]
+  Report      Report[]
+
+  @@index([created_by], map: "created_by")
+}
+
+model Quiz_tag {
+  quiz_id Int
+  tag_id  Int
+  Quiz    Quiz @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Quiz_tag_ibfk_1")
+  Tag     Tag  @relation(fields: [tag_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Quiz_tag_ibfk_2")
+
+  @@id([quiz_id, tag_id])
+  @@index([tag_id], map: "tag_id")
+}
+
+model Rating {
+  id      Int  @id @unique(map: "id")
+  quiz_id Int
+  user_id Int
+  rating  Int
+  Quiz    Quiz @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Rating_ibfk_1")
+  User    User @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Rating_ibfk_2")
+
+  @@index([quiz_id], map: "quiz_id")
+  @@index([user_id], map: "user_id")
+}
+
+model Report {
+  id                            Int      @id @unique(map: "id")
+  user_id                       Int?
+  quiz_id                       Int?
+  comment_id                    Int?
+  reason                        String?  @db.Text
+  reviewed_by                   Int?
+  resolved                      Boolean?
+  comment                       String?  @db.Text
+  Comment                       Comment? @relation(fields: [comment_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Report_ibfk_1")
+  Quiz                          Quiz?    @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Report_ibfk_2")
+  User_Report_reviewed_byToUser User?    @relation("Report_reviewed_byToUser", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Report_ibfk_3")
+  User_Report_user_idToUser     User?    @relation("Report_user_idToUser", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Report_ibfk_4")
+
+  @@index([comment_id], map: "comment_id")
+  @@index([quiz_id], map: "quiz_id")
+  @@index([reviewed_by], map: "reviewed_by")
+  @@index([user_id], map: "user_id")
+}
+
+model Tag {
+  id       Int        @id @unique(map: "id")
+  name     String     @db.VarChar(500)
+  Quiz_tag Quiz_tag[]
+}
+
+model User {
+  id                              Int           @id @unique(map: "id")
+  username                        String        @db.VarChar(500)
+  email                           String        @unique(map: "User_UNIQUE") @db.VarChar(500)
+  password                        String        @db.VarChar(500)
+  is_admin                        Boolean
+  created_at                      DateTime      @db.DateTime(0)
+  Comment                         Comment[]
+  Favourite                       Favourite[]
+  Game                            Game[]
+  Game_player                     Game_player[]
+  Quiz                            Quiz[]
+  Rating                          Rating[]
+  Report_Report_reviewed_byToUser Report[]      @relation("Report_reviewed_byToUser")
+  Report_Report_user_idToUser     Report[]      @relation("Report_user_idToUser")
 }
