@@ -4,6 +4,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 
 import auth from "./routes/auth.js";
+import quizes from "./routes/quizes.js"
 
 var server: ReturnType<typeof createServer>;
 var io;
@@ -26,6 +27,7 @@ fastify.register(cors, {
 })
 
 fastify.register(auth)
+fastify.register(quizes)
 
 fastify.get("/", async (request, reply) => {
   return { hello: "world" };
