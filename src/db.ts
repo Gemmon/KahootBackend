@@ -1,7 +1,7 @@
 import { PrismaClient, User, Quiz } from "@prisma/client";
 import { sha256 } from "./functions.js";
 import { title } from "process";
-import { QuizRequestBody } from "./routes/quizes.js";
+import { EditQuizRequestBody, QuizRequestBody } from "./routes/quizes.js";
 
 const prisma = new PrismaClient();
 
@@ -20,7 +20,7 @@ export async function addQuiz(quizData: QuizRequestBody){
   try {
     const quiz = await prisma.quiz.create({
       data: {
-        id: 123,
+        id: 3,
         titile: quizData.title,
         description: quizData.description,
         created_by: quizData.created_by,
@@ -37,5 +37,51 @@ export async function addQuiz(quizData: QuizRequestBody){
 }
 
 export async function getQuizes() {
-  return await prisma.quiz.findMany()
+  return await prisma.quiz.findMany({
+    where: {
+      is_removed: false
+    }
+  })
+}
+
+export async function getQuizById(id: number){
+  return await prisma.quiz.findFirst({
+    where: {
+      id: id
+    }
+  })
+}
+
+export async function removeQuizById(id: number) {
+  try {
+    return await prisma.quiz.update({
+      where: {
+        id: id,
+        is_removed: false
+      },
+      data: {
+        is_removed: true
+      }
+    })
+      
+  } catch (error) {
+    return null;    
+  }
+}
+
+export async function editQuiz(quizData:EditQuizRequestBody) {
+  try{
+    return await prisma.quiz.update({
+      where: {
+        id: quizData.id
+      },
+      data: {
+        title: quizData.title,
+        description: quizData.description,
+        is_public: quizData.is_public
+      }
+    })
+  } catch(error){
+    return null;
+  }
 }
