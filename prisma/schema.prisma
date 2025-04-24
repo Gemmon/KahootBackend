@@ -153,7 +153,7 @@ model Tag {
 }
 
 model User {
-  id                              Int           @id @unique(map: "id")
+  id                              Int           @id @unique(map: "id") @default(autoincrement())
   username                        String        @db.VarChar(500)
   email                           String        @unique(map: "User_UNIQUE") @db.VarChar(500)
   password                        String        @db.VarChar(500)
