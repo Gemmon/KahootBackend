@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Answer {
-  id          Int      @id @unique(map: "id")
+  id          Int      @id @unique(map: "id") @default(autoincrement())
   question_id Int
   content     String   @db.Text
   is_correct  Boolean
@@ -18,7 +18,7 @@ model Answer {
 }
 
 model Comment {
-  id         Int       @id @unique(map: "id")
+  id         Int       @id @unique(map: "id") @default(autoincrement())
   quiz_id    Int?
   user_id    Int?
   content    String?   @db.Text
@@ -33,7 +33,7 @@ model Comment {
 }
 
 model Favourite {
-  id      Int  @id @unique(map: "id")
+  id      Int  @id @unique(map: "id") @default(autoincrement())
   user_id Int
   quiz_id Int
   Quiz    Quiz @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Favourite_ibfk_1")
@@ -44,7 +44,7 @@ model Favourite {
 }
 
 model Game {
-  id          Int           @id @unique(map: "id")
+  id          Int           @id @unique(map: "id") @default(autoincrement())
   quiz_id     Int
   host_id     Int
   started_at  DateTime      @db.DateTime(0)
@@ -58,7 +58,7 @@ model Game {
 }
 
 model Game_player {
-  id         Int       @id @unique(map: "id")
+  id         Int       @id @unique(map: "id") @default(autoincrement())
   game_id    Int
   user_id    Int?
   guest_name String?   @db.VarChar(500)
@@ -72,7 +72,7 @@ model Game_player {
 }
 
 model Question {
-  id              Int      @id @unique(map: "id")
+  id              Int      @id @unique(map: "id") @default(autoincrement())
   quiz_id         Int
   content         String?  @db.Text
   partial_points  Boolean?
@@ -85,7 +85,7 @@ model Question {
 }
 
 model Quiz {
-  id          Int         @id @unique(map: "id")
+  id          Int         @id @unique(map: "id") @default(autoincrement())
   titile      String      @db.VarChar(500)
   description String      @db.Text
   created_by  Int
@@ -115,7 +115,7 @@ model Quiz_tag {
 }
 
 model Rating {
-  id      Int  @id @unique(map: "id")
+  id      Int  @id @unique(map: "id") @default(autoincrement())
   quiz_id Int
   user_id Int
   rating  Int
@@ -127,7 +127,7 @@ model Rating {
 }
 
 model Report {
-  id                            Int      @id @unique(map: "id")
+  id                            Int      @id @unique(map: "id") @default(autoincrement())
   user_id                       Int?
   quiz_id                       Int?
   comment_id                    Int?
@@ -147,18 +147,18 @@ model Report {
 }
 
 model Tag {
-  id       Int        @id @unique(map: "id")
+  id       Int        @id @unique(map: "id") @default(autoincrement())
   name     String     @db.VarChar(500)
   Quiz_tag Quiz_tag[]
 }
 
 model User {
-  id                              Int           @id @unique(map: "id")
+  id                              Int           @id @unique(map: "id") @default(autoincrement())
   username                        String        @db.VarChar(500)
   email                           String        @unique(map: "User_UNIQUE") @db.VarChar(500)
   password                        String        @db.VarChar(500)
   is_admin                        Boolean
-  created_at                      DateTime      @db.DateTime(0)
+  created_at                      DateTime      @default(now()) @db.DateTime(0)
   Comment                         Comment[]
   Favourite                       Favourite[]
   Game                            Game[]
