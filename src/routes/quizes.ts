@@ -35,7 +35,7 @@ const opts = {
 export default async function routes(fastify: FastifyInstance, options: any) {
     fastify.post("/quizes", opts, async(request, reply) => {
         const quizData = request.body as QuizRequestBody;
-
+        
         const quiz = await addQuiz(quizData);
         if(quiz){
             reply.status(201).send({ result:'quiz added', data:quiz})
@@ -49,7 +49,13 @@ export default async function routes(fastify: FastifyInstance, options: any) {
     })
 
     fastify.get("/quizes", async(request, reply) => {
-        const quizes = await getQuizes();
+        const query = request.query as {
+            limit?: string,
+            offset?: string
+        }
+        const limit = Number(query.limit)
+        const offset = Number(query.offset)
+        const quizes = await getQuizes(limit, offset);
         reply.status(200).send({data:quizes})
     })
 
