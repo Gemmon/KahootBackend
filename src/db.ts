@@ -20,7 +20,6 @@ export async function addQuiz(quizData: QuizRequestBody){
   try {
     const quiz = await prisma.quiz.create({
       data: {
-        id: 8,
         titile: quizData.title,
         description: quizData.description,
         created_by: quizData.created_by,
@@ -36,12 +35,13 @@ export async function addQuiz(quizData: QuizRequestBody){
   }
 }
 
-export async function getQuizes(limit: number, offset: number) {
+export async function getQuizes(limit: number, offset: number, userId: number) {
   return await prisma.quiz.findMany({
     skip: offset,
     take: limit,
     where: {
-      is_removed: false
+      is_removed: false,
+      created_by: userId
     }
   })
 }
@@ -54,11 +54,12 @@ export async function getQuizById(id: number){
   })
 }
 
-export async function removeQuizById(id: number) {
+export async function removeQuizById(quizId: number, userId: number) {
   try {
     return await prisma.quiz.update({
       where: {
-        id: id,
+        id: quizId,
+        created_by: userId,
         is_removed: false
       },
       data: {
@@ -71,11 +72,12 @@ export async function removeQuizById(id: number) {
   }
 }
 
-export async function editQuiz(quizData:EditQuizRequestBody) {
+export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
   try{
     return await prisma.quiz.update({
       where: {
-        id: quizData.id
+        id: quizData.id,
+        created_by: userId
       },
       data: {
         titile: quizData.title,

@@ -1,6 +1,5 @@
 import { FastifyInstance } from "fastify";
 import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz } from "../db.js";
-import { request } from "http";
 
 export interface QuizRequestBody{
     title: string,
@@ -26,15 +25,16 @@ const opts = {
                 created_by: { type: 'integer'},
                 is_public: { type: 'boolean'},
             },
-            required: ['title', 'description', 'created_by', 'is_public']
+            required: ['title', 'description', 'is_public']
         }
     }
 }
 
 
 export default async function routes(fastify: FastifyInstance, options: any) {
-    fastify.post("/quizes", opts, async(request, reply) => {
-        const quizData = request.body as QuizRequestBody;
+    fastify.post("/quizes", {preHandler: [fastify.authenticate]}, opts, async(request, reply) => {
+        const quizData = request.body as QuizRequestBody
+        quizData.created_by = request.user.id
         
         const quiz = await addQuiz(quizData);
         if(quiz){
@@ -44,18 +44,14 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.get("/test", async(request, reply) => {
-        reply.send({hello:"world"});
-    })
-
-    fastify.get("/quizes", async(request, reply) => {
+    fastify.get("/quizes", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const query = request.query as {
             limit?: string,
             offset?: string
         }
         const limit = Number(query.limit)
         const offset = Number(query.offset)
-        const quizes = await getQuizes(limit, offset);
+        const quizes = await getQuizes(limit, offset, request.user.id);
         reply.status(200).send({data:quizes})
     })
 
@@ -69,9 +65,9 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.delete("/quizes/:id", async(request, reply) => {
+    fastify.delete("/quizes/:id", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizId = parseInt((request.params as {id:string}).id)
-        const quiz = await removeQuizById(quizId)
+        const quiz = await removeQuizById(quizId, request.user.id)
         if(quiz){
             reply.status(200).send({data:quiz})
         } else {
@@ -79,9 +75,9 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.patch("/quizes", async(request, reply) => {
+    fastify.patch("/quizes", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizData = request.body as EditQuizRequestBody
-        const quiz = await editQuiz(quizData)
+        const quiz = await editQuiz(quizData, request.user.id)
         if(quiz){
             reply.status(200).send({data:quiz})
         } else {
