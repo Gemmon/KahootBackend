@@ -2,6 +2,8 @@ import Fastify from "fastify";
 import cors from "@fastify/cors"
 import { createServer } from "http";
 import { Server } from "socket.io";
+import jwtPlugin from "./plugins/jwt"
+import authRoutes from "./routes/auth"
 
 import auth from "./routes/auth.js";
 import quizes from "./routes/quizes.js"
@@ -21,6 +23,9 @@ const fastify = Fastify({
     return server;
   }
 })
+
+fastify.register(jwtPlugin)
+fastify.register(authRoutes)
 
 fastify.register(cors, {
   origin: true
