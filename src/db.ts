@@ -16,13 +16,13 @@ export async function login(email: string, password: string): Promise<User | nul
   });
 }
 
-export async function addQuiz(quizData: QuizRequestBody){
+export async function addQuiz(quizData: QuizRequestBody, userId: number){
   try {
     const quiz = await prisma.quiz.create({
       data: {
         titile: quizData.title,
         description: quizData.description,
-        created_by: quizData.created_by,
+        created_by: userId,
         is_public: quizData.is_public,
         created_at: new Date(),
         is_removed: false
@@ -35,13 +35,12 @@ export async function addQuiz(quizData: QuizRequestBody){
   }
 }
 
-export async function getQuizes(limit: number, offset: number, userId: number) {
+export async function getQuizes(limit: number, offset: number) {
   return await prisma.quiz.findMany({
     skip: offset,
     take: limit,
     where: {
       is_removed: false,
-      created_by: userId
     }
   })
 }

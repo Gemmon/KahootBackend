@@ -4,7 +4,6 @@ import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz } from "../db
 export interface QuizRequestBody{
     title: string,
     description: string,
-    created_by: number,
     is_public: boolean
 }
 
@@ -15,28 +14,30 @@ export interface EditQuizRequestBody{
     is_public: boolean
 }
 
-const opts = {
-    schema: {
-        body: {
-            type: 'object',
-            properties: {
-                title: { type: 'string'},
-                description: { type: 'string'},
-                created_by: { type: 'integer'},
-                is_public: { type: 'boolean'},
-            },
-            required: ['title', 'description', 'is_public']
-        }
+const schema = {
+    body: {
+        type: 'object',
+        properties: {
+            title: { type: 'string'},
+            description: { type: 'string'},
+            is_public: { type: 'boolean'},
+        },
+        required: ['title', 'description', 'is_public'],
+        additionalProperties: false
     }
+}
+
+function getUserId(request: any){
+    const user = request.user as {id: number}
+    return user.id
 }
 
 
 export default async function routes(fastify: FastifyInstance, options: any) {
-    fastify.post("/quizes", {preHandler: [fastify.authenticate]}, opts, async(request, reply) => {
+    fastify.post("/quizes", {preHandler: [fastify.authenticate], schema}, async(request, reply) => {
         const quizData = request.body as QuizRequestBody
-        quizData.created_by = request.user.id
-        
-        const quiz = await addQuiz(quizData);
+
+        const quiz = await addQuiz(quizData, getUserId(request));
         if(quiz){
             reply.status(201).send({ result:'quiz added', data:quiz})
         } else {
@@ -51,7 +52,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
         const limit = Number(query.limit)
         const offset = Number(query.offset)
-        const quizes = await getQuizes(limit, offset, request.user.id);
+        const quizes = await getQuizes(limit, offset);
         reply.status(200).send({data:quizes})
     })
 
@@ -67,7 +68,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
 
     fastify.delete("/quizes/:id", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizId = parseInt((request.params as {id:string}).id)
-        const quiz = await removeQuizById(quizId, request.user.id)
+        const quiz = await removeQuizById(quizId, getUserId(request))
         if(quiz){
             reply.status(200).send({data:quiz})
         } else {
@@ -77,7 +78,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
 
     fastify.patch("/quizes", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizData = request.body as EditQuizRequestBody
-        const quiz = await editQuiz(quizData, request.user.id)
+        const quiz = await editQuiz(quizData, getUserId(request))
         if(quiz){
             reply.status(200).send({data:quiz})
         } else {
