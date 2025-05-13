@@ -15,7 +15,7 @@
     "strict": true,
     "skipLibCheck": true,
     "lib": ["ES2021", "DOM"],
-    "rootDir": "./src"
+    "rootDir": "."
   },
   "include": ["src/**/*"],
 }
