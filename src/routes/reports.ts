@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuizReport, addCommentReport, getReports, getReport, deleteReport, updateReport } from "../db.js";
+import prisma, { addQuizReport, addCommentReport, getReports, getReport, deleteReport, updateReport } from "../db.js";
 import { Prisma } from "@prisma/client";
 
 
@@ -46,7 +46,10 @@ export default async function routes(fastify: FastifyInstance, options: any) {
     })
 
     fastify.get("/reports", async(request, reply) => {
-        const {user_id, quiz_id, comment_id, reviewed_by, resolved} = request.query as {user_id: number, quiz_id: number, comment_id: number, reviewed_by: number, resolved: string};
+        const {
+            user_id, quiz_id, comment_id, reviewed_by, resolved, page, limit, 
+        } = request.query as {
+            user_id: number, quiz_id: number, comment_id: number, reviewed_by: number, resolved: string, page: number, limit: number};
         const filters: Prisma.ReportWhereInput = {
             ...(user_id ? { user_id: Number(user_id) } : {}),
             ...(quiz_id ? { quiz_id: Number(quiz_id) } : {}),
@@ -54,9 +57,22 @@ export default async function routes(fastify: FastifyInstance, options: any) {
             ...(reviewed_by ? { reviewed_by: Number(reviewed_by) } : {}),
             ...(resolved !== undefined && { resolved: resolved === 'true' }),
         };
-        const reports = await getReports(filters);
-        console.log(reports)
-        reply.status(200).send({data:reports})
+
+        const pageNumber = Number(page) > 0 ? Number(page) : 1;
+        const limitNumber = Number(limit) > 0 ? Number(limit) : 20;
+        const skip = (Number(pageNumber) - 1) * Number(limitNumber);
+        const take = Number(limitNumber);
+
+        const totalLength = await prisma.report.count({where: filters});
+        const reports = await getReports(filters, skip, take);
+        reply.status(200).send({
+            data:reports,
+            meta: {
+                page: pageNumber,
+                limit: limitNumber,
+                totalPages: Math.ceil(totalLength / limitNumber),
+            }
+        })
     })
 
     fastify.get("/reports/:id", async(request, reply) => {

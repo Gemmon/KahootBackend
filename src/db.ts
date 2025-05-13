@@ -73,8 +73,10 @@ export async function addCommentReport(reportData: ReportRequestBody) {
   }
 }
 
-export async function getReports(filters: Prisma.ReportWhereInput) {
+export async function getReports(filters: Prisma.ReportWhereInput, skip: number, take: number) {
   return await prisma.report.findMany({
+    skip: skip,
+    take: take,
     where: filters
   });
 }
