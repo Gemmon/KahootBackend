@@ -17,7 +17,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
           }
 
-        const existingUser= await prisma.user.findUnique({ where: { email } })
+        const existingUser= await prisma.user.findFirst({ where: { email } })
         if (existingUser) {
             return reply.status(400).send({ message: "User already exists" })
         }
