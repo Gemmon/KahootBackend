@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors"
 import { createServer } from "http";
 import { Server } from "socket.io";
-import jwtPlugin from "./plugins/jwt"
+import jwtPlugin from "./plugins/jwt.js"
 import authRoutes from "./routes/auth"
 
 import auth from "./routes/auth.js";
@@ -38,7 +38,7 @@ fastify.get("/", async (request, reply) => {
 
 fastify.ready((err) => {
   if (err) throw err;
-  server.listen(3000, () => {
-    console.log("Server listening on http://localhost:3000");
+  server.listen(3000, '0.0.0.0', () => {
+    console.log("Server listening on http://*:3000");
   });
 });

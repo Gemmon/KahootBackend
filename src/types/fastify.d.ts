@@ -7,5 +7,6 @@ declare module 'fastify' {
     // post(arg0: string, arg1: { preHandler: any[] }, arg2: (request: any, reply: any) => Promise<void>): unknown
     // get(arg0: string, arg1: { preHandler: any[] }, arg2: (request: any, reply: any) => Promise<any>): unknown
     authenticate: any
+    jwt: any
   }
 }
