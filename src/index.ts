@@ -2,10 +2,9 @@ import Fastify from "fastify";
 import cors from "@fastify/cors"
 import { createServer } from "http";
 import { Server } from "socket.io";
-import jwtPlugin from "./plugins/jwt"
-// import authRoutes from "./routes/auth"
-
-import auth from "./routes/auth.js";
+import jwtPlugin from "./plugins/jwt.js"
+import authRoutes from "./routes/auth.js"
+import quizes from "./routes/quizes.js"
 import report from "./routes/reports.js";
 
 var server: ReturnType<typeof createServer>;
@@ -25,13 +24,14 @@ const fastify = Fastify({
 })
 
 fastify.register(jwtPlugin)
-// fastify.register(authRoutes)
+fastify.register(authRoutes)
 
 fastify.register(cors, {
   origin: true
 })
 
-fastify.register(auth)
+
+fastify.register(quizes)
 fastify.register(report)
 
 fastify.get("/", async (request, reply) => {
@@ -40,7 +40,7 @@ fastify.get("/", async (request, reply) => {
 
 fastify.ready((err) => {
   if (err) throw err;
-  server.listen(3000, () => {
-    console.log("Server listening on http://localhost:3000");
+  server.listen(3000, '0.0.0.0', () => {
+    console.log("Server listening on http://*:3000");
   });
 });
