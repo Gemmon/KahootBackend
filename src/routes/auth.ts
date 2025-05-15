@@ -1,7 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { sha256 } from "../functions.js";
-import { login } from "../db.js";
+import { findEmail, login } from "../db.js";
 import prisma from "../db.js"
+import { sendRecoveryEmail } from "../services/mailer.js";
+import { emit } from "process";
 
 
 
@@ -84,8 +86,20 @@ export default async function authRoutes(fastify: FastifyInstance) {
         return reply.status(200).send({ message: "User deleted" })
     })
 
+    // odzyskanie hasla request code
+    fastify.post("/recover/request-code", async(request, reply) => {
+        const email = (request.body as { email: string }).email
 
+        if(!await findEmail(email)){
+            return reply.status(404).send({message: "User not found"})
+        }
 
-
+        try{
+            const code = await sendRecoveryEmail(email)
+            return reply.status(200).send({ message: "Recovery code sent to " + email})
+        } catch(error){
+            return reply.status(500).send({ error: "Failed to send recovery email"})
+        }
+    })
 
 }

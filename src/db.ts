@@ -88,3 +88,21 @@ export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
     return null;
   }
 }
+
+export async function findEmail(userEmail:string): Promise<boolean|null> {
+  try{
+    const user = await prisma.user.findFirst({
+      where: {
+        email: userEmail
+      },
+      select: {
+        id: true
+      }
+    })
+
+    return !!user
+
+  } catch (error){
+    return null
+  }
+}
