@@ -15,7 +15,7 @@ export async function login(email: string, password: string): Promise<User | nul
   });
 }
 
-export async function addQuizReport(reportData: ReportRequestBody) {
+export async function addQuizReport(reportData: ReportRequestBody, userId: number) {
   try {
     const lastReport = await prisma.report.findFirst({
       orderBy: {
@@ -23,12 +23,9 @@ export async function addQuizReport(reportData: ReportRequestBody) {
       }
     });
 
-    const newId = lastReport ? lastReport.id + 1 : 1;
-
     const report = await prisma.report.create({
       data: {
-        id: newId,
-        user_id: reportData.user_id,
+        user_id: userId,
         quiz_id: reportData.quiz_id,
         comment_id: null,
         reason: reportData.reason,
@@ -44,7 +41,7 @@ export async function addQuizReport(reportData: ReportRequestBody) {
   }
 }
 
-export async function addCommentReport(reportData: ReportRequestBody) {
+export async function addCommentReport(reportData: ReportRequestBody, userId: number) {
   try {
     const lastReport = await prisma.report.findFirst({
       orderBy: {
@@ -52,12 +49,10 @@ export async function addCommentReport(reportData: ReportRequestBody) {
       }
     });
 
-    const newId = lastReport ? lastReport.id + 1 : 1;
     console.log(reportData.reason,)
     const report = await prisma.report.create({
       data: {
-        id: newId,
-        user_id: reportData.user_id,
+        user_id: userId,
         quiz_id: null,
         comment_id: reportData.comment_id,
         reason: reportData.reason,
@@ -82,7 +77,6 @@ export async function getReports(filters: Prisma.ReportWhereInput, skip: number,
 }
 
 export async function getReport(id: number) {
-  console.log("Getting report with id: " + id);
   return await prisma.report.findFirst({
     where: {
       id: id,
@@ -111,7 +105,6 @@ export async function updateReport(id: number, reportData: ReportRequestBody) {
         id: id,
       },
       data: {
-        user_id: reportData.user_id,
         quiz_id: reportData.quiz_id,
         comment_id: reportData.comment_id,
         reason: reportData.reason,

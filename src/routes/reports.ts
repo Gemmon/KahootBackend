@@ -26,17 +26,18 @@ const opts = {
 
 
 export default async function routes(fastify: FastifyInstance, options: any) {
-    fastify.post("/reports", opts, async(request, reply) => {
+    fastify.post("/reports", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const reportData = request.body as ReportRequestBody;
+        const userId = (request.user as { id: number }).id;
         let report = null;
         if (reportData.comment_id != null && reportData.quiz_id != null) {
             reply.status(400).send({ message: 'You can only report a quiz or a comment, not both' });
         }
         else if (reportData.comment_id != null) {
-            report = await addCommentReport(reportData);
+            report = await addCommentReport(reportData, userId);
         }
         else if (reportData.quiz_id != null) {
-            report = await addQuizReport(reportData);
+            report = await addQuizReport(reportData, userId);
         }
         if(report){
             reply.status(201).send({ result:'Report added', data:report})
@@ -45,7 +46,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.get("/reports", async(request, reply) => {
+    fastify.get("/reports", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const {
             user_id, quiz_id, comment_id, reviewed_by, resolved, page, limit, 
         } = request.query as {
@@ -75,7 +76,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         })
     })
 
-    fastify.get("/reports/:id", async(request, reply) => {
+    fastify.get("/reports/:id", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const reportId = parseInt((request.params as { id: string }).id);
         const report = await getReport(reportId);
         if(report) {
@@ -86,7 +87,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.delete("/reports/:id", async(request, reply) => {
+    fastify.delete("/reports/:id", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const reportId = parseInt((request.params as { id: string }).id);
         console.log("Deleting report with id: " + reportId);
         const report = await deleteReport(reportId);
@@ -98,7 +99,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.put("/reports/:id", async(request, reply) => {
+    fastify.put("/reports/:id", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const reportId = parseInt((request.params as {id: string}).id);
         const report = await updateReport(reportId, request.body as ReportRequestBody);
         if(report) {

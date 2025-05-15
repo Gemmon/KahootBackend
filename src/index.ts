@@ -3,7 +3,7 @@ import cors from "@fastify/cors"
 import { createServer } from "http";
 import { Server } from "socket.io";
 import jwtPlugin from "./plugins/jwt"
-import authRoutes from "./routes/auth"
+// import authRoutes from "./routes/auth"
 
 import auth from "./routes/auth.js";
 import report from "./routes/reports.js";
@@ -25,7 +25,7 @@ const fastify = Fastify({
 })
 
 fastify.register(jwtPlugin)
-fastify.register(authRoutes)
+// fastify.register(authRoutes)
 
 fastify.register(cors, {
   origin: true
