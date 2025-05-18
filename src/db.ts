@@ -1,4 +1,4 @@
-import { PrismaClient, User, Quiz } from "@prisma/client";
+import { PrismaClient, User, Quiz, User_recovery } from "@prisma/client";
 import { sha256 } from "./functions.js";
 import { title } from "process";
 import { EditQuizRequestBody, QuizRequestBody } from "./routes/quizes.js";
@@ -89,7 +89,7 @@ export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
   }
 }
 
-export async function findEmail(userEmail:string): Promise<boolean|null> {
+export async function findUserByEmail(userEmail:string) {
   try{
     const user = await prisma.user.findFirst({
       where: {
@@ -100,9 +100,54 @@ export async function findEmail(userEmail:string): Promise<boolean|null> {
       }
     })
 
-    return !!user
+    return user
 
   } catch (error){
     return null
+  }
+}
+
+export async function saveRecoveryCode(userId: number, code: string, expires: Date) {
+  try {
+    await prisma.user_recovery.createMany({
+      data: {
+        user_id: userId,
+        code: code,
+        expires: new Date(expires)
+      }
+    })
+  } catch (error){
+    console.log("Error adding recovery code")
+    if (error instanceof Error) {
+      console.error(error)
+    }
+    throw new Error("Error adding recovery code")
+  } 
+}
+
+export async function findRecoveryCode(email:string, code: string) {
+  try {
+    const user = await findUserByEmail(email)
+
+    if(!user){
+      throw new Error("User not found")
+    }
+
+    return await prisma.user_recovery.findFirst({
+      where: {
+        user_id: user.id,
+        code: code,
+        expires: {
+          gt: new Date()
+        }
+      }, 
+      select: {
+        user_id: true,
+        code: true
+      }
+    })
+  } catch (error){
+    console.log("Error finding recovery code")
+    throw new Error("Error finding recovery code")
   }
 }
