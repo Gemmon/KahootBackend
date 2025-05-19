@@ -124,6 +124,7 @@ model Rating {
 
   @@index([quiz_id], map: "quiz_id")
   @@index([user_id], map: "user_id")
+  @@unique([quiz_id, user_id])
 }
 
 model Report {

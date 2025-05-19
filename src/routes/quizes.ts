@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, removeQuizRating, addOrUpdateQuizRating } from "../db.js";
 
 export interface QuizRequestBody{
     title: string,
@@ -31,7 +31,6 @@ function getUserId(request: any){
     const user = request.user as {id: number}
     return user.id
 }
-
 
 export default async function routes(fastify: FastifyInstance, options: any) {
     fastify.post("/quizes", {preHandler: [fastify.authenticate], schema}, async(request, reply) => {
@@ -81,6 +80,55 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const quiz = await editQuiz(quizData, getUserId(request))
         if(quiz){
             reply.status(200).send({data:quiz})
+        } else {
+            reply.status(404).send({message:'Quiz not found'})
+        }
+    })
+
+    fastify.post("/quizes/:id/like", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizId = parseInt((request.params as {id:string}).id)
+        if(isNaN(quizId)){
+            return reply.status(400).send({ message: 'Invalid quiz ID' });
+        }
+
+        const userId = getUserId(request)
+        if(isNaN(userId)){
+            return reply.status(400).send({ message: 'Invalid user ID' });
+        }
+
+        const { rating } = request.body as { rating: number }
+        if (rating < 1 || rating > 5) {
+            return reply.status(400).send({ message: 'Rating must be between 1 and 5' });
+        }
+
+        const quiz = await addOrUpdateQuizRating(quizId, userId, rating)
+        if(quiz){
+            reply.status(200).send({
+                success: true,
+                message: "Quiz liked."
+            })
+        } else {
+            reply.status(404).send({message:'Quiz not found'})
+        }
+    })
+
+    fastify.delete("/quizes/:id/like", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizId = parseInt((request.params as {id:string}).id)
+        if(isNaN(quizId)){
+            return reply.status(400).send({ message: 'Invalid quiz ID' });
+        }
+
+        const userId = getUserId(request)
+        if(isNaN(userId)){
+            return reply.status(400).send({ message: 'Invalid user ID' });
+        }
+
+        const quiz = await removeQuizRating(quizId, userId)
+        if(quiz){
+            reply.status(200).send({
+                success: true,
+                message: "Quiz unliked."
+            })
         } else {
             reply.status(404).send({message:'Quiz not found'})
         }

@@ -88,3 +88,50 @@ export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
     return null;
   }
 }
+
+export async function addOrUpdateQuizRating(quizId: number, userId: number, quizRating: number) {
+  try {
+    const existingRating = await prisma.rating.findUnique({
+      where: {
+        quiz_id_user_id: {
+          quiz_id: quizId,
+          user_id: userId,
+        }
+      }
+    });
+
+    if (existingRating) {
+      return await prisma.rating.update({
+        where: { id: existingRating.id },
+        data: { rating: quizRating },
+      });
+    } else {
+      return await prisma.rating.create({
+        data: {
+          quiz_id: quizId,
+          user_id: userId,
+          rating: quizRating,
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error quiz rating: " + error);
+    return null;
+  }
+}
+
+export async function removeQuizRating(quizId: number, userId: number) {
+  try {
+    return await prisma.rating.delete({
+      where: {
+        quiz_id_user_id: {
+          quiz_id: quizId,
+          user_id: userId
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error removing quiz rating:", error);
+    return null;
+  }
+}
