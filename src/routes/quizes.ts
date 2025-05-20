@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz } from "../db.js";
+import {addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getLikedQuizzesByUser} from "../db.js";
 
 export interface QuizRequestBody{
     title: string,
@@ -84,5 +84,24 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         } else {
             reply.status(404).send({message:'Quiz not found'})
         }
+    })
+
+    fastify.get("/api/quizzes/liked", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+        const userId = getUserId(request)
+        const { sort_by } = request.query as { sort_by?: "created_at" | "title" | "rating" }
+
+        const validSortFields = ["created_at", "title", "rating"] as const
+        const sortBy: "created_at" | "title" | "rating" = validSortFields.includes(sort_by as any)
+            ? (sort_by as "created_at" | "title" | "rating")
+            : "created_at"
+
+        const likedQuizzes = await getLikedQuizzesByUser(userId, sortBy)
+
+        const result = likedQuizzes.map(q => ({
+            id: q.id,
+            title: q.titile
+        }))
+
+        reply.status(200).send(result)
     })
 }
