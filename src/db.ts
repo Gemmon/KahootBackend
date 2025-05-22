@@ -88,3 +88,52 @@ export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
     return null;
   }
 }
+
+export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at" | "title" | "rating") {
+  try {
+    const quizzes = await prisma.quiz.findMany({
+      where: {
+        Favourite: {
+          some: {
+            user_id: userId
+          }
+        },
+        is_removed: false
+      },
+      select: {
+        id: true,
+        titile: true,
+        created_at: true,
+        Rating: {
+          select: {
+            rating: true
+          }
+        }
+      }
+    })
+
+    const quizzesWithAvgRating = quizzes.map(q => ({
+      ...q,
+      avgRating: q.Rating.length > 0
+          ? q.Rating.reduce((acc, r) => acc + r.rating, 0) / q.Rating.length
+          : 0
+    }))
+
+    const sorted = quizzesWithAvgRating.sort((a, b) => {
+      switch (sortBy) {
+        case "title":
+          return a.titile.localeCompare(b.titile)
+        case "rating":
+          return b.avgRating - a.avgRating
+        case "created_at":
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+    })
+
+    return sorted
+  } catch (error) {
+    console.error("Error fetching liked quizzes:", error)
+    return []
+  }
+}
