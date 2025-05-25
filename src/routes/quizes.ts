@@ -87,7 +87,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.get("/api/quizzes/liked", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+    fastify.get("/quizes/liked", { preHandler: [fastify.authenticate] }, async (request, reply) => {
         const userId = getUserId(request)
         const { sort_by } = request.query as { sort_by?: "created_at" | "title" | "rating" }
 
