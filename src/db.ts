@@ -17,6 +17,8 @@ export async function login(email: string, password: string): Promise<User | nul
   });
 }
 
+
+//Quizy
 export async function addQuiz(quizData: QuizRequestBody, userId: number){
   try {
     const quiz = await prisma.quiz.create({
@@ -88,6 +90,34 @@ export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
   } catch(error){
     return null;
   }
+}
+
+export async function getSuggestedQuizes(limit: number, offset: number, userId?: number) {
+  let sortLimit: number = Math.max(limit, 500); 
+  const quizes = await prisma.quiz.findMany({
+    take: sortLimit,
+    where: {
+      is_removed: false,
+      is_public: true,
+      ...(userId ? { created_by: { not: userId } } : {})
+    },
+    orderBy: {
+      created_at: 'desc'
+    }
+  })
+  if (quizes.length === 0) {
+    return [];
+  }
+  const maxLikes: number = Math.max(...quizes.map(q => q.likes));
+  const minLikes: number = Math.min(...quizes.map(q => q.likes));
+  const likesGap: number = maxLikes - minLikes;
+  const startTime: number = quizes[0].created_at.getTime();
+  const endTime: number = quizes[quizes.length - 1].created_at.getTime();
+  const timeGap: number = endTime - startTime;
+  return quizes.map(q => ({
+    ...q,
+    score: 0.6 * ((q.likes - minLikes)/likesGap) + 0.4 * (q.rating_avg/5) + 0.1 * ((q.created_at.getTime() - startTime) / timeGap)
+  })).sort((a, b) => b.score - a.score).slice(offset, offset + limit);
 }
 
 //Raportowanie
