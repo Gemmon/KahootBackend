@@ -48,9 +48,9 @@ export default async function routes(fastify: FastifyInstance, options: any) {
 
     fastify.get("/reports", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const {
-            user_id, quiz_id, comment_id, reviewed_by, resolved, page, limit, 
+            user_id, quiz_id, comment_id, reviewed_by, resolved, limit, offset, 
         } = request.query as {
-            user_id: number, quiz_id: number, comment_id: number, reviewed_by: number, resolved: string, page: number, limit: number};
+            user_id: number, quiz_id: number, comment_id: number, reviewed_by: number, resolved: string, limit: number, offset: number};
         const filters: Prisma.ReportWhereInput = {
             ...(user_id ? { user_id: Number(user_id) } : {}),
             ...(quiz_id ? { quiz_id: Number(quiz_id) } : {}),
@@ -59,19 +59,12 @@ export default async function routes(fastify: FastifyInstance, options: any) {
             ...(resolved !== undefined && { resolved: resolved === 'true' }),
         };
 
-        const pageNumber = Number(page) > 0 ? Number(page) : 1;
-        const limitNumber = Number(limit) > 0 ? Number(limit) : 20;
-        const skip = (Number(pageNumber) - 1) * Number(limitNumber);
-        const take = Number(limitNumber);
-
         const totalLength = await prisma.report.count({where: filters});
-        const reports = await getReports(filters, skip, take);
+        const reports = await getReports(filters, Number(limit), Number(offset));
         reply.status(200).send({
             data:reports,
             meta: {
-                page: pageNumber,
-                limit: limitNumber,
-                totalPages: Math.ceil(totalLength / limitNumber),
+                totalLenght: totalLength,
             }
         })
     })
