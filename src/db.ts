@@ -91,3 +91,247 @@ export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
     return null;
   }
 }
+
+export async function findUserByEmail(userEmail:string) {
+  try{
+    const user = await prisma.user.findFirst({
+      where: {
+        email: userEmail
+      },
+      select: {
+        id: true
+      }
+    })
+
+    return user
+
+  } catch (error){
+    return null
+  }
+}
+
+export async function saveRecoveryCode(userId: number, code: string, expires: Date) {
+  try {
+    await prisma.user_recovery.createMany({
+      data: {
+        user_id: userId,
+        code: code,
+        expires: new Date(expires)
+      }
+    })
+  } catch (error){
+    console.log("Error adding recovery code")
+    if (error instanceof Error) {
+      console.error(error)
+    }
+    throw new Error("Error adding recovery code")
+  } 
+}
+
+export async function findRecoveryCode(email:string, code: string) {
+  try {
+    const user = await findUserByEmail(email)
+
+    if(!user){
+      throw new Error("User not found")
+    }
+
+    return await prisma.user_recovery.findFirst({
+      where: {
+        user_id: user.id,
+        code: code,
+        expires: {
+          gt: new Date()
+        }
+      }, 
+      select: {
+        user_id: true,
+        code: true
+      }
+    })
+  } catch (error){
+    console.log("Error finding recovery code")
+    throw new Error("Error finding recovery code")
+  }
+}
+
+export async function getSuggestedQuizes(limit: number, offset: number, userId?: number) {
+  let sortLimit: number = Math.max(limit, 500); 
+  const quizes = await prisma.quiz.findMany({
+    take: sortLimit,
+    where: {
+      is_removed: false,
+      is_public: true,
+      ...(userId ? { created_by: { not: userId } } : {})
+    },
+    orderBy: {
+      created_at: 'desc'
+    }
+  })
+  if (quizes.length === 0) {
+    return [];
+  }
+  const maxLikes: number = Math.max(...quizes.map(q => q.likes));
+  const minLikes: number = Math.min(...quizes.map(q => q.likes));
+  const likesGap: number = maxLikes - minLikes;
+  const startTime: number = quizes[0].created_at.getTime();
+  const endTime: number = quizes[quizes.length - 1].created_at.getTime();
+  const timeGap: number = endTime - startTime;
+  return quizes.map(q => ({
+    ...q,
+    score: 0.6 * ((q.likes - minLikes)/likesGap) + 0.4 * (q.rating_avg/5) + 0.1 * ((q.created_at.getTime() - startTime) / timeGap)
+  })).sort((a, b) => b.score - a.score).slice(offset, offset + limit);
+}
+
+//Raportowanie
+export async function addQuizReport(reportData: ReportRequestBody, userId: number) {
+  try {
+    const lastReport = await prisma.report.findFirst({
+      orderBy: {
+        id: 'desc',
+      }
+    });
+
+    const report = await prisma.report.create({
+      data: {
+        user_id: userId,
+        quiz_id: reportData.quiz_id,
+        comment_id: null,
+        reason: reportData.reason,
+        reviewed_by: null,
+        resolved: false,
+        comment: null,
+      }
+    });
+    return report;
+  } catch (error) {
+    console.error("Error creating report: " + error);
+    return null;
+  }
+}
+
+export async function addCommentReport(reportData: ReportRequestBody, userId: number) {
+  try {
+    const lastReport = await prisma.report.findFirst({
+      orderBy: {
+        id: 'desc',
+      }
+    });
+
+    console.log(reportData.reason,)
+    const report = await prisma.report.create({
+      data: {
+        user_id: userId,
+        quiz_id: null,
+        comment_id: reportData.comment_id,
+        reason: reportData.reason,
+        reviewed_by: null,
+        resolved: false,
+        comment: null,
+      }
+    });
+    return report;
+  } catch (error) {
+    console.error("Error creating report: " + error);
+    return null;
+  }
+}
+
+export async function getReports(filters: Prisma.ReportWhereInput, limit: number, offset: number) {
+  return await prisma.report.findMany({
+    skip: offset,
+    take: limit,
+    where: filters
+  });
+}
+
+export async function getReport(id: number) {
+  return await prisma.report.findFirst({
+    where: {
+      id: id,
+    }
+  });
+}
+
+export async function deleteReport(id: number) {
+  try {
+    const report = await prisma.report.delete({
+      where: {
+        id: id,
+      }
+    });
+    return report;
+  } catch (error) {
+    console.error("Error deleting report: " + error);
+    return null;
+  }
+}
+
+export async function updateReport(id: number, reportData: ReportRequestBody) {
+  try {
+    const report = await prisma.report.update({
+      where: {
+        id: id,
+      },
+      data: {
+        quiz_id: reportData.quiz_id,
+        comment_id: reportData.comment_id,
+        reason: reportData.reason,
+      }
+    })
+    return report;
+  }
+  catch (error) {
+    console.error("Error updating report: " + error);
+    return null;
+  }
+}
+
+export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at" | "title" | "rating") {
+  try {
+    const quizzes = await prisma.quiz.findMany({
+      where: {
+        Favourite: {
+          some: {
+            user_id: userId
+          }
+        },
+        is_removed: false
+      },
+      select: {
+        id: true,
+        titile: true,
+        created_at: true,
+        Rating: {
+          select: {
+            rating: true
+          }
+        }
+      }
+    })
+
+    const quizzesWithAvgRating = quizzes.map(q => ({
+      ...q,
+      avgRating: q.Rating.length > 0
+          ? q.Rating.reduce((acc, r) => acc + r.rating, 0) / q.Rating.length
+          : 0
+    }))
+
+    const sorted = quizzesWithAvgRating.sort((a, b) => {
+      switch (sortBy) {
+        case "title":
+          return a.titile.localeCompare(b.titile)
+        case "rating":
+          return b.avgRating - a.avgRating
+        case "created_at":
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+    })
+
+    return sorted
+  } catch (error) {
+    console.error("Error fetching liked quizzes:", error)
+    return []
+  }
+}
