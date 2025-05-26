@@ -102,7 +102,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
             await saveRecoveryCode(user.id, code, expires)
             console.log("code saved")
             await sendRecoveryEmail({
-                from: "support@gahoot.com",
                 to: email,
                 subject: 'Password Recovery Code',
                 text: `Your recovery code is: ${code}`,
