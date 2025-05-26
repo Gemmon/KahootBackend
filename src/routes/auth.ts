@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { sha256 } from "../functions.js";
-import { login } from "../db.js";
+import { findRecoveryCode, findUserByEmail, login, saveRecoveryCode } from "../db.js";
 import prisma from "../db.js"
+import { sendRecoveryEmail } from "../services/mailer.js";
+import { emit } from "process";
+import { generatePasswordResetToken, generateRecoveryCode } from "../services/recoveryCode.js";
 
 
 
@@ -84,8 +87,56 @@ export default async function authRoutes(fastify: FastifyInstance) {
         return reply.status(200).send({ message: "User deleted" })
     })
 
+    // odzyskanie hasla request code
+    fastify.post("/recover/request-code", async(request, reply) => {
+        const email = (request.body as { email: string }).email
+        const user = await findUserByEmail(email)
 
+        if(!user){
+            return reply.status(404).send({message: "User not found"})
+        }
 
+        try{
+            const {code, expires} = generateRecoveryCode()
+            console.log("code generated")
+            await saveRecoveryCode(user.id, code, expires)
+            console.log("code saved")
+            await sendRecoveryEmail({
+                to: email,
+                subject: 'Password Recovery Code',
+                text: `Your recovery code is: ${code}`,
+                html: `<p>Your recovery code is: <strong>${code}</strong></p>`
+            })
+            console.log(code) // usun to
+            return reply.status(200).send({ message: "Recovery code sent to " + email})
+        } catch(error){
+            return reply.status(500).send({ error: "Failed to send recovery email"})
+        }
+    })
 
+    fastify.post("/recover/recovery-code", async(request, reply) => {
+        const body = request.body as {
+            email: string,
+            code: string
+        }
+
+        try{
+            const code = await findRecoveryCode(body.email, body.code)
+
+            if(!code){
+                return reply.status(404).send({message: "Invalid or expired code"})
+            }
+
+            const token = generatePasswordResetToken(code.user_id, fastify)
+
+            return reply.status(200).send({
+                message: "Code verified, proceed to reset password",
+                token: token
+            })
+
+        } catch (error) {
+            return reply.status(500).send({message: "User not found"})
+        }
+    })
 
 }
