@@ -92,6 +92,8 @@ model Quiz {
   is_public   Boolean
   created_at  DateTime    @db.DateTime(0)
   is_removed  Boolean?
+  likes       Int         @default(0) @db.UnsignedInt
+  rating_avg  Float       @default(0)
   Comment     Comment[]
   Favourite   Favourite[]
   Game        Game[]

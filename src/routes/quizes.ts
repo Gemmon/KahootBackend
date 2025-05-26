@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser } from "../db.js";
+import { get } from "http";
 
 export interface QuizRequestBody{
     title: string,
@@ -85,4 +86,34 @@ export default async function routes(fastify: FastifyInstance, options: any) {
             reply.status(404).send({message:'Quiz not found'})
         }
     })
+
+    fastify.get("/quizes/liked", { preHandler: [fastify.authenticate] }, async (request, reply) => {
+        const userId = getUserId(request)
+        const { sort_by } = request.query as { sort_by?: "created_at" | "title" | "rating" }
+
+        const validSortFields = ["created_at", "title", "rating"] as const
+        const sortBy: "created_at" | "title" | "rating" = validSortFields.includes(sort_by as any)
+            ? (sort_by as "created_at" | "title" | "rating")
+            : "created_at"
+
+        const likedQuizzes = await getLikedQuizzesByUser(userId, sortBy)
+
+        const result = likedQuizzes.map(q => ({
+            id: q.id,
+            title: q.titile
+        }))
+
+        reply.status(200).send(result)
+    })
+
+    fastify.get("/quizes/suggested", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const query = request.query as {
+            limit?: string,
+            offset?: string
+        }
+        const limit = Number(query.limit)
+        const offset = Number(query.offset)
+        const quizes = await getSuggestedQuizes(limit, offset, getUserId(request));
+        reply.status(200).send({data:quizes})
+    });
 }
