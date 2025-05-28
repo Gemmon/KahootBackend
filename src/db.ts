@@ -71,8 +71,8 @@ export async function removeQuizById(quizId: number, userId: number) {
   }
 }
 
-export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
-  try{
+export async function editQuiz(quizData: EditQuizRequestBody, userId: number) {
+  try {
     return await prisma.quiz.update({
       where: {
         id: quizData.id,
@@ -84,13 +84,18 @@ export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
         is_public: quizData.is_public
       }
     })
-  } catch(error){
+  } catch (error) {
     return null;
   }
 }
 
-export async function getSuggestedQuizes(limit: number, offset: number, userId?: number) {
-  let sortLimit: number = Math.max(limit, 500); 
+export async function getSuggestedQuizes(
+  limit: number,
+  offset: number,
+  userId?: number,
+  sort_by: "created_at" | "likes" | "title" | "score" = "score"
+) {
+  let sortLimit: number = Math.max(limit, 500);
   const quizes = await prisma.quiz.findMany({
     take: sortLimit,
     where: {
@@ -111,8 +116,18 @@ export async function getSuggestedQuizes(limit: number, offset: number, userId?:
   const startTime: number = quizes[0].created_at.getTime();
   const endTime: number = quizes[quizes.length - 1].created_at.getTime();
   const timeGap: number = endTime - startTime;
-  return quizes.map(q => ({
+  const scoredQuizes = quizes.map(q => ({
     ...q,
-    score: 0.6 * ((q.likes - minLikes)/likesGap) + 0.4 * (q.rating_avg/5) + 0.1 * ((q.created_at.getTime() - startTime) / timeGap)
-  })).sort((a, b) => b.score - a.score).slice(offset, offset + limit);
+    score: 0.6 * ((q.likes - minLikes) / likesGap) + 0.4 * (q.rating_avg / 5) + 0.1 * ((q.created_at.getTime() - startTime) / timeGap)
+  })).sort((a, b) => b.score - a.score);
+
+  if (sort_by === "created_at") {
+    scoredQuizes.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+  } else if (sort_by === "likes") {
+    scoredQuizes.sort((a, b) => b.likes - a.likes);
+  } else if (sort_by === "title") {
+    scoredQuizes.sort((a, b) => a.titile.localeCompare(b.titile));
+  }
+
+  return scoredQuizes.slice(offset, offset + limit);
 }
