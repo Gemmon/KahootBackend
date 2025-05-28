@@ -110,10 +110,12 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const query = request.query as {
             limit?: string,
             offset?: string
+            sort_by?: "created_at" | "likes" | "title"
         }
         const limit = Number(query.limit)
         const offset = Number(query.offset)
-        const quizes = await getSuggestedQuizes(limit, offset, getUserId(request));
+        const sort_by = query.sort_by;
+        const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by);
         reply.status(200).send({data:quizes})
     });
 }
