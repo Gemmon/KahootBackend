@@ -350,3 +350,36 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
     return []
   }
 }
+
+export async function getQuizHistoryByUser(userId: number, limit: number){
+  try {
+    const games = await prisma.game.findMany({
+      where: {
+        Game_player: {
+          some: {
+            user_id: userId
+          }
+        },
+        finished_at: {
+          not: null
+        }
+      },
+      orderBy: {
+        finished_at: 'desc'
+      },
+      take: limit,
+      include: {
+        Game_player: {
+          where: {
+            user_id: userId
+          }
+        }
+      }
+    })
+
+    return games
+  } catch (error) {
+    console.log(error)
+    return []
+  }
+}

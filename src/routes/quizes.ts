@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getQuizHistoryByUser } from "../db.js";
 import { get } from "http";
 
 export interface QuizRequestBody{
@@ -116,6 +116,17 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const offset = Number(query.offset)
         const sort_by = query.sort_by;
         const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by);
+        reply.status(200).send({data:quizes})
+    });
+
+    fastify.get("/quizes/history", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const query = request.query as {
+            limit?: string,
+        }
+        const userId = getUserId(request)
+        
+        const limit = query.limit == null ? 12 : Number(query.limit)
+        const quizes = await getQuizHistoryByUser(userId, limit)
         reply.status(200).send({data:quizes})
     });
 }
