@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, addOrUpdateQuizFavourite, removeQuizFavourite } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, addQuizFavourite, removeQuizFavourite } from "../db.js";
 import { get } from "http";
 
 export interface QuizRequestBody{
@@ -130,7 +130,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
             return reply.status(400).send({ message: 'Invalid user ID' });
         }
 
-        const quiz = await addOrUpdateQuizFavourite(quizId, userId)
+        const quiz = await addQuizFavourite(quizId, userId)
         if(quiz){
             reply.status(200).send({
                 success: true,

@@ -351,7 +351,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
   }
 }
 
-export async function addOrUpdateQuizFavourite(quizId: number, userId: number) {
+export async function addQuizFavourite(quizId: number, userId: number) {
   try {
     const existingFavorite = await prisma.favourite.findFirst({
       where: {
