@@ -350,3 +350,42 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
     return []
   }
 }
+
+export async function addOrUpdateQuizFavourite(quizId: number, userId: number) {
+  try {
+    const existingFavorite = await prisma.favourite.findFirst({
+      where: {
+        quiz_id: quizId,
+        user_id: userId,
+      },
+  });
+
+    if (existingFavorite) {
+      return true; // Jak funkcja jest wywoływana, to zwrócona wartość mówi czy jest ok czy nie, więc zwracam true
+    } else {
+      return await prisma.favourite.create({
+        data: {
+          quiz_id: quizId,
+          user_id: userId,
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error quiz rating: " + error);
+    return null;
+  }
+}
+
+export async function removeQuizFavourite(quizId: number, userId: number) {
+  try {
+    return await prisma.favourite.deleteMany({ // delete wymaga unikalnego id, więc używam deleteMany, na wszelki wypadek nie będę modyfikował bazy danych
+      where: {
+        quiz_id: quizId,
+        user_id: userId,
+      }
+    });
+  } catch (error) {
+    console.error("Error removing quiz favourite:", error);
+    return null;
+  }
+}
