@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.js"
 import quizes from "./routes/quizes.js"
 import 'dotenv/config.js'
 import report from "./routes/reports.js";
+import tags from "./routes/tags.js";
 
 var server: ReturnType<typeof createServer>;
 var io;
@@ -34,6 +35,7 @@ fastify.register(cors, {
 
 fastify.register(quizes)
 fastify.register(report)
+fastify.register(tags)
 
 fastify.get("/", async (request, reply) => {
   return { hello: "world" };

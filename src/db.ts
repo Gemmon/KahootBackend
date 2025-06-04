@@ -135,6 +135,29 @@ export async function getSuggestedQuizes(
   return scoredQuizes.slice(offset, offset + limit);
 }
 
+// Tagi
+export async function getTags(limit: number, offset: number) {
+  return await prisma.tag.findMany({
+    skip: offset,
+    take: limit,
+  })
+}
+
+export async function createTag(name: string) {
+  try {
+    const tag = await prisma.tag.create({
+      data: {
+        name: name
+      }
+    })
+
+    return tag
+  } catch(error) {
+    console.error("Error adding tag: " + error);
+    return null;
+  }
+}
+
 export async function findUserByEmail(userEmail:string) {
   try{
     const user = await prisma.user.findFirst({
