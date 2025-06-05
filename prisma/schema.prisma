@@ -86,7 +86,7 @@ model Question {
 
 model Quiz {
   id          Int         @id @unique(map: "id") @default(autoincrement())
-  titile      String      @db.VarChar(500)
+  title      String      @db.VarChar(500)
   description String      @db.Text
   created_by  Int
   is_public   Boolean
