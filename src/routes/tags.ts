@@ -17,23 +17,23 @@ const schema = {
 }
 
 export default async function routes(fastify: FastifyInstance, options: any) {
-    // prehandler
-    fastify.post("/tags", async(request, reply) => {
-        const tagData = request.body as TagRequestBody
+    fastify.post("/tags", { preHandler: [fastify.authenticate], schema }, async(request, reply) => {
+        const tagData = request.body as TagRequestBody  
 
-        const tag = await createTag(tagData.name);
-        if(tag){
-            reply.status(201).send({ result:'tag added', data:tag})
+        const newTag = await createTag(tagData.name);
+        if(newTag){
+            reply.status(201).send({ result:'Tag added', data: newTag })
+        } else if(newTag === undefined) {
+            reply.status(409).send({ message:'Tag already exists' })
         } else {
-            reply.status(500).send({ message:'could not add tag'})
+            reply.status(500).send({ message:'Could not add tag' })
         }
     })
 
-    // Add {preHandler: [fastify.authenticate], schema}
-    fastify.get("/tags", async(request, reply) => {
+    fastify.get("/tags", { preHandler: [fastify.authenticate] }, async(request, reply) => {
         const query = request.query as {
-            limit: string,
-            offset: string
+            limit?: string,
+            offset?: string
         }
         const limit = Number(query.limit);
         const offset = Number(query.offset)

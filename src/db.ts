@@ -145,16 +145,25 @@ export async function getTags(limit: number, offset: number) {
 
 export async function createTag(name: string) {
   try {
+    const isExisting = await prisma.tag.findFirst({
+      where: {
+        name: name,
+      },
+    })
+
+    if (isExisting) { 
+      return undefined 
+    }
+
     const tag = await prisma.tag.create({
       data: {
         name: name
       }
     })
-
+    
     return tag
   } catch(error) {
-    console.error("Error adding tag: " + error);
-    return null;
+    return null
   }
 }
 
