@@ -57,11 +57,11 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         reply.status(200).send({data:quizes})
     })
 
-    fastify.get("/quizes/:id", async(request, reply) => {
+    fastify.get("/quizes/:id", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizId = parseInt((request.params as {id:string}).id)
-        const quiz = await getQuizById(quizId)
+        const quiz = await getQuizById(quizId, 2137)
         if(quiz){
-            reply.status(200).send({data:quiz})
+            reply.status(200).send({quiz})
         } else {
             reply.status(404).send({message: 'Quiz not found'})
         }
@@ -100,7 +100,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
 
         const result = likedQuizzes.map(q => ({
             id: q.id,
-            title: q.titile
+            title: q.title
         }))
 
         reply.status(200).send(result)

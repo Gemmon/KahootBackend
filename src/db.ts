@@ -23,7 +23,7 @@ export async function addQuiz(quizData: QuizRequestBody, userId: number){
   try {
     const quiz = await prisma.quiz.create({
       data: {
-        titile: quizData.title,
+        title: quizData.title,
         description: quizData.description,
         created_by: userId,
         is_public: quizData.is_public,
@@ -48,12 +48,39 @@ export async function getQuizes(limit: number, offset: number) {
   })
 }
 
-export async function getQuizById(id: number){
-  return await prisma.quiz.findFirst({
+export async function getQuizById(quizId: number, userId: number){
+  const quiz = await prisma.quiz.findFirst({
     where: {
-      id: id
+      id: quizId
     }
   })
+
+  if(!quiz)
+    return null;
+
+  const questions = await prisma.question.findMany({
+    where: {
+      quiz_id: quizId,
+    },
+  })
+
+  for (const question of questions) {
+    const answers = await prisma.answer.findMany({
+      where: {
+        question_id: question.id,
+      },
+    });
+    (question as any).answers = answers; //"as any" żeby TS nie narzekał na brak pola answers, nie mam pojęcia jak to zrobić lepiej
+  }
+
+  return {
+    quizId: quiz.id,
+    title: quiz.title,
+    description: quiz.description,
+    questions: questions,
+    ownerId: quiz.created_by,
+    isOwner: quiz.created_by === userId,
+  }
 }
 
 export async function removeQuizById(quizId: number, userId: number) {
@@ -82,7 +109,7 @@ export async function editQuiz(quizData: EditQuizRequestBody, userId: number) {
         created_by: userId
       },
       data: {
-        titile: quizData.title,
+        title: quizData.title,
         description: quizData.description,
         is_public: quizData.is_public
       }
@@ -129,7 +156,7 @@ export async function getSuggestedQuizes(
   } else if (sort_by === "likes") {
     scoredQuizes.sort((a, b) => b.likes - a.likes);
   } else if (sort_by === "title") {
-    scoredQuizes.sort((a, b) => a.titile.localeCompare(b.titile));
+    scoredQuizes.sort((a, b) => a.title.localeCompare(b.title));
   }
 
   return scoredQuizes.slice(offset, offset + limit);
@@ -315,7 +342,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
       },
       select: {
         id: true,
-        titile: true,
+        title: true,
         created_at: true,
         Rating: {
           select: {
@@ -335,7 +362,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
     const sorted = quizzesWithAvgRating.sort((a, b) => {
       switch (sortBy) {
         case "title":
-          return a.titile.localeCompare(b.titile)
+          return a.title.localeCompare(b.title)
         case "rating":
           return b.avgRating - a.avgRating
         case "created_at":
