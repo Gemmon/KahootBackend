@@ -32,12 +32,14 @@ export default async function routes(fastify: FastifyInstance, options: any) {
     // Add {preHandler: [fastify.authenticate], schema}
     fastify.get("/tags", async(request, reply) => {
         const query = request.query as {
-            limit?: string,
-            offset?: string
+            limit: string,
+            offset: string
         }
-        const limit = Number(query.limit)
+        const limit = Number(query.limit);
         const offset = Number(query.offset)
+
         const tags = await getTags(limit, offset);
-        reply.status(200).send({ items_count: tags.length, data: tags })
+
+        reply.status(200).send({ data: tags })
     })
 }

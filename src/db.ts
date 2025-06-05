@@ -138,8 +138,8 @@ export async function getSuggestedQuizes(
 // Tagi
 export async function getTags(limit: number, offset: number) {
   return await prisma.tag.findMany({
-    skip: offset,
-    take: limit,
+    ...(offset ? { skip: offset } : {}),
+    ...(limit ? { take: limit } : {}),
   })
 }
 
