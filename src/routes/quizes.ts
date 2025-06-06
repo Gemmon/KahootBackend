@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite } from "../db.js";
 import { get } from "http";
 
 export interface QuizRequestBody{
@@ -118,6 +118,50 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by);
         reply.status(200).send({data:quizes})
     });
+
+    fastify.post("/quizes/:id/favourite", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizId = parseInt((request.params as {id:string}).id)
+        if(isNaN(quizId)){
+            return reply.status(400).send({ message: 'Invalid quiz ID' });
+        }
+
+        const userId = getUserId(request)
+        if(isNaN(userId)){
+            return reply.status(400).send({ message: 'Invalid user ID' });
+        }
+
+        const quiz = await addQuizFavourite(quizId, userId)
+        if(quiz){
+            reply.status(200).send({
+                success: true,
+                message: "Quiz favourite."
+            })
+        } else {
+            reply.status(404).send({message:'Quiz not found'})
+        }
+    })
+
+    fastify.delete("/quizes/:id/favourite", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizId = parseInt((request.params as {id:string}).id)
+        if(isNaN(quizId)){
+            return reply.status(400).send({ message: 'Invalid quiz ID' });
+        }
+
+        const userId = getUserId(request)
+        if(isNaN(userId)){
+            return reply.status(400).send({ message: 'Invalid user ID' });
+        }
+
+        const quiz = await removeQuizFavourite(quizId, userId)
+        if(quiz){
+            reply.status(200).send({
+                success: true,
+                message: "Quiz not favourite."
+            })
+        } else {
+            reply.status(404).send({message:'Quiz not found'})
+        }
+    })
     fastify.get("/quizes/own", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const query = request.query as {
             limit: string,
