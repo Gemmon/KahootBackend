@@ -118,7 +118,6 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by);
         reply.status(200).send({data:quizes})
     });
-
     fastify.get("/quizes/own", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const query = request.query as {
             limit: string,
