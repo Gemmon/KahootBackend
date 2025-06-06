@@ -3,6 +3,7 @@ import { sha256 } from "./functions.js";
 import { title } from "process";
 import { EditQuizRequestBody, QuizRequestBody } from "./routes/quizes.js";
 import { ReportRequestBody } from "./routes/reports.js";
+import { CommentRequestBody } from "./routes/comments.js";
 
 const prisma = new PrismaClient();
 
@@ -442,6 +443,80 @@ export async function removeQuizFavourite(quizId: number, userId: number) {
     });
   } catch (error) {
     console.error("Error removing quiz favourite:", error);
+    return null;
+  }
+}
+
+
+//KOMENTOWANIE
+export async function addComment(commentData: CommentRequestBody) {
+  try {
+
+    const comment = await prisma.comment.create({
+      data: {
+        quiz_id: commentData.quiz_id,
+        user_id: commentData.user_id,
+        content: commentData.content,
+        created_at: new Date(),
+        is_removed: false,
+      }
+    })
+    return comment;
+  } catch (error) {
+    console.error("Error creating comment: " + error);
+    return null;
+  }
+}
+
+export async function getCommentsOfQuiz(id: number) {
+  console.log("Getting comments of quiz: " + id);
+  return await prisma.comment.findMany({
+    where: {
+      quiz_id: id,
+      is_removed: false
+    }
+  })
+}
+
+export async function getCommentsOfUser(id: number) {
+  console.log("Getting comments of User: " + id);
+  return await prisma.comment.findMany({
+    where: {
+      user_id: id,
+      is_removed: false
+    }
+  })
+}
+
+export async function updateComment(id: number, commentData: CommentRequestBody){
+  try{
+    const comment = await prisma.comment.update({
+      where: {
+        id: id,
+      },
+      data: {
+        content: commentData.content,
+        created_at: new Date(),
+      }
+    });
+    return comment;
+  }
+  catch(error){
+    console.error("Error updating comment: " + error);
+    return null;
+  }
+}
+
+export async function deleteComment(id: number){
+  try{
+    const comment = await prisma.comment.update({
+      where: { id },
+      data: { is_removed: true }
+    })
+    return comment;
+  }
+  catch(error){
+    console.error("Error deleting comment: " + error)
     return null;
   }
 }
