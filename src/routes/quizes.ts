@@ -28,7 +28,7 @@ const schema = {
     }
 }
 
-function getUserId(request: any){
+export function getUserId(request: any){
     const user = request.user as {id: number}
     return user.id
 }
@@ -177,4 +177,43 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const ownQuizzes = await getUserQuizes(limit, offset, userId, sort_by, reverse);
         reply.status(200).send({data: ownQuizzes})
     });
+
+    //POST /quizzes stworzenie quizu, jezeli jest id w body, to aktualizacja quizu
+    fastify.post("/quizzes", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizData=request.body as {
+            quizId?: number,
+            title: string,
+            description: string,
+            questions: Array<{}>,
+            is_public: boolean
+        }
+        const userId= getUserId(request);
+        if(!quizData.title || !quizData.description || !quizData.questions || quizData.questions.length === 0){
+            return reply.status(400).send({ message: 'Title, description info about public and questions are required.' });
+        }
+        if(quizData.quizId){
+            const updatedQuiz = await editQuiz({
+                id: quizData.quizId,
+                title: quizData.title,
+                description: quizData.description,
+                is_public: quizData.is_public
+            }, userId);
+            if(updatedQuiz){
+                reply.status(200).send({data: updatedQuiz});
+            } else {
+                reply.status(404).send({message:'Quiz not found'});
+            }
+        } else {
+            const newQuiz = await addQuiz({
+                title: quizData.title,
+                description: quizData.description,
+                is_public: quizData.is_public
+            }, userId);
+            if(newQuiz){
+                reply.status(201).send({data: newQuiz});
+            } else {
+                reply.status(500).send({message:'Could not create quiz'});
+            }
+        }
+    })
 }
