@@ -59,7 +59,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
 
     fastify.get("/quizes/:id", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizId = parseInt((request.params as {id:string}).id)
-        const quiz = await getQuizById(quizId, 2137)
+        const quiz = await getQuizById(quizId, getUserId(request))
         if(quiz){
             reply.status(200).send({quiz})
         } else {
