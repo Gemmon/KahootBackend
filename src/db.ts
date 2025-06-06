@@ -23,7 +23,7 @@ export async function addQuiz(quizData: QuizRequestBody, userId: number){
   try {
     const quiz = await prisma.quiz.create({
       data: {
-        titile: quizData.title,
+        title: quizData.title,
         description: quizData.description,
         created_by: userId,
         is_public: quizData.is_public,
@@ -82,7 +82,7 @@ export async function editQuiz(quizData: EditQuizRequestBody, userId: number) {
         created_by: userId
       },
       data: {
-        titile: quizData.title,
+        title: quizData.title,
         description: quizData.description,
         is_public: quizData.is_public
       }
@@ -129,10 +129,34 @@ export async function getSuggestedQuizes(
   } else if (sort_by === "likes") {
     scoredQuizes.sort((a, b) => b.likes - a.likes);
   } else if (sort_by === "title") {
-    scoredQuizes.sort((a, b) => a.titile.localeCompare(b.titile));
+    scoredQuizes.sort((a, b) => a.title.localeCompare(b.title));
   }
 
   return scoredQuizes.slice(offset, offset + limit);
+}
+
+export async function getUserQuizes(
+  limit: number, 
+  offset: number,
+  userId: number,
+  sort_by: "created_at" | "likes" | "title" = "created_at",
+  reverse: boolean = false) {
+  try {
+      return await prisma.quiz.findMany({
+        where: {
+          created_by: userId,
+          is_removed: false
+        },
+        skip: offset,
+        take: limit,
+        orderBy: {
+          [sort_by]: reverse ? 'asc' : 'desc'
+        },
+      });
+  } 
+  catch (error) {
+    return null;
+  }
 }
 
 export async function findUserByEmail(userEmail:string) {
@@ -315,7 +339,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
       },
       select: {
         id: true,
-        titile: true,
+        title: true,
         created_at: true,
         Rating: {
           select: {
@@ -335,7 +359,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
     const sorted = quizzesWithAvgRating.sort((a, b) => {
       switch (sortBy) {
         case "title":
-          return a.titile.localeCompare(b.titile)
+          return a.title.localeCompare(b.title)
         case "rating":
           return b.avgRating - a.avgRating
         case "created_at":
