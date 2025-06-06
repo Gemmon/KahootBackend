@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite,deleteQuestionsForQuiz, addQuestionsToQuiz } from "../db.js";
 import { get } from "http";
+
 
 export interface QuizRequestBody{
     title: string,
@@ -28,7 +29,7 @@ const schema = {
     }
 }
 
-function getUserId(request: any){
+export function getUserId(request: any){
     const user = request.user as {id: number}
     return user.id
 }
@@ -177,4 +178,58 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const ownQuizzes = await getUserQuizes(limit, offset, userId, sort_by, reverse);
         reply.status(200).send({data: ownQuizzes})
     });
+
+    //POST /quizzes stworzenie quizu, jezeli jest id w body, to aktualizacja quizu
+    fastify.post("/quizzes", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+            try{
+                const quizData=request.body as {
+                    quizId?: number,
+                    title: string,
+                    description: string,
+                    questions: Array<{
+                        content: string, 
+                        answers: Array<{ content: string, is_correct: boolean }>,
+                        partial_points?: boolean, 
+                        negative_points?: boolean, 
+                        max_points: number 
+                    }>,
+                    is_public: boolean
+                }
+                const userId= getUserId(request);
+                if(!quizData.title || !quizData.description || !quizData.questions || quizData.questions.length === 0){
+                    return reply.status(400).send({ message: 'Title, description info about public and questions are required.' });
+                }
+                if(quizData.quizId){
+                    const updatedQuiz = await editQuiz({
+                        id: quizData.quizId,
+                        title: quizData.title,
+                        description: quizData.description,
+                        is_public: quizData.is_public
+                    }, userId);
+                    if(!updatedQuiz){
+                        return reply.status(404).send({ message: 'Quiz not found.' });
+                    }
+                    await deleteQuestionsForQuiz(quizData.quizId);
+                    await addQuestionsToQuiz(quizData.quizId, quizData.questions);
+
+                    return reply.status(200).send({ data: updatedQuiz });
+
+                } else {
+                    const newQuiz = await addQuiz({
+                        title: quizData.title,
+                        description: quizData.description,
+                        is_public: quizData.is_public
+                    }, userId);
+                    if(newQuiz){
+                        await addQuestionsToQuiz(newQuiz.id, quizData.questions);
+                        return reply.status(201).send({data: newQuiz});
+                    } else {
+                        return reply.status(500).send({message:'Could not create quiz'});
+                    }
+                }
+            } catch (error) {
+                console.error("Error creating or updating quiz:", error);
+                return reply.status(500).send({ message: 'Internal server error.' });
+            }
+    })
 }
