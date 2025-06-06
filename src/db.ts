@@ -135,6 +135,30 @@ export async function getSuggestedQuizes(
   return scoredQuizes.slice(offset, offset + limit);
 }
 
+export async function getUserQuizes(
+  limit: number, 
+  offset: number,
+  userId: number,
+  sort_by: "created_at" | "likes" | "title" = "created_at",
+  reverse: boolean = false) {
+  try {
+      return await prisma.quiz.findMany({
+        where: {
+          created_by: userId,
+          is_removed: false
+        },
+        skip: offset,
+        take: limit,
+        orderBy: {
+          [sort_by]: reverse ? 'asc' : 'desc'
+        },
+      });
+  } 
+  catch (error) {
+    return null;
+  }
+}
+
 export async function findUserByEmail(userEmail:string) {
   try{
     const user = await prisma.user.findFirst({

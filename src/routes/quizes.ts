@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes } from "../db.js";
 import { get } from "http";
 
 export interface QuizRequestBody{
@@ -112,10 +112,25 @@ export default async function routes(fastify: FastifyInstance, options: any) {
             offset?: string
             sort_by?: "created_at" | "likes" | "title"
         }
-        const limit = Number(query.limit)
-        const offset = Number(query.offset)
+        const limit = Number(query.limit) || 100;
+        const offset = Number(query.offset) || 0;
         const sort_by = query.sort_by;
         const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by);
         reply.status(200).send({data:quizes})
+    });
+    fastify.get("/quizes/own", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const query = request.query as {
+            limit: string,
+            offset?: string
+            sort_by?: "created_at" | "likes" | "title",
+            reverse?: string
+        }
+        const limit = Number(query.limit) || 100;
+        const offset = Number(query.offset) || 0;
+        const sort_by = query.sort_by;
+        const userId = getUserId(request);
+        const reverse = query.reverse === 'true' || query.reverse === '1';
+        const ownQuizzes = await getUserQuizes(limit, offset, userId, sort_by, reverse);
+        reply.status(200).send({data: ownQuizzes})
     });
 }
