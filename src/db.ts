@@ -135,6 +135,38 @@ export async function getSuggestedQuizes(
   return scoredQuizes.slice(offset, offset + limit);
 }
 
+// Tagi
+export async function getTags(limit: number, offset: number) {
+  return await prisma.tag.findMany({
+    ...(offset ? { skip: offset } : {}),
+    ...(limit ? { take: limit } : {}),
+  })
+}
+
+export async function createTag(name: string) {
+  try {
+    const isExisting = await prisma.tag.findFirst({
+      where: {
+        name: name,
+      },
+    })
+
+    if (isExisting) { 
+      return undefined 
+    }
+
+    const tag = await prisma.tag.create({
+      data: {
+        name: name
+      }
+    })
+    
+    return tag
+  } catch(error) {
+    return null
+  }
+}
+
 export async function getUserQuizes(
   limit: number, 
   offset: number,
