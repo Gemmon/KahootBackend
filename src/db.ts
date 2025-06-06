@@ -49,12 +49,39 @@ export async function getQuizes(limit: number, offset: number) {
   })
 }
 
-export async function getQuizById(id: number){
-  return await prisma.quiz.findFirst({
+export async function getQuizById(quizId: number, userId: number){
+  const quiz = await prisma.quiz.findFirst({
     where: {
-      id: id
+      id: quizId
     }
   })
+
+  if(!quiz)
+    return null;
+
+  const questions = await prisma.question.findMany({
+    where: {
+      quiz_id: quizId,
+    },
+  })
+
+  for (const question of questions) {
+    const answers = await prisma.answer.findMany({
+      where: {
+        question_id: question.id,
+      },
+    });
+    (question as any).answers = answers; //"as any" żeby TS nie narzekał na brak pola answers, nie mam pojęcia jak to zrobić lepiej
+  }
+
+  return {
+    quizId: quiz.id,
+    title: quiz.title,
+    description: quiz.description,
+    questions: questions,
+    ownerId: quiz.created_by,
+    isOwner: quiz.created_by === userId,
+  }
 }
 
 export async function removeQuizById(quizId: number, userId: number) {
