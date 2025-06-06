@@ -136,6 +136,62 @@ export async function getSuggestedQuizes(
   return scoredQuizes.slice(offset, offset + limit);
 }
 
+// Tagi
+export async function getTags(limit: number, offset: number) {
+  return await prisma.tag.findMany({
+    ...(offset ? { skip: offset } : {}),
+    ...(limit ? { take: limit } : {}),
+  })
+}
+
+export async function createTag(name: string) {
+  try {
+    const isExisting = await prisma.tag.findFirst({
+      where: {
+        name: name,
+      },
+    })
+
+    if (isExisting) { 
+      return undefined 
+    }
+
+    const tag = await prisma.tag.create({
+      data: {
+        name: name
+      }
+    })
+    
+    return tag
+  } catch(error) {
+    return null
+  }
+}
+
+export async function getUserQuizes(
+  limit: number, 
+  offset: number,
+  userId: number,
+  sort_by: "created_at" | "likes" | "title" = "created_at",
+  reverse: boolean = false) {
+  try {
+      return await prisma.quiz.findMany({
+        where: {
+          created_by: userId,
+          is_removed: false
+        },
+        skip: offset,
+        take: limit,
+        orderBy: {
+          [sort_by]: reverse ? 'asc' : 'desc'
+        },
+      });
+  } 
+  catch (error) {
+    return null;
+  }
+}
+
 export async function findUserByEmail(userEmail:string) {
   try{
     const user = await prisma.user.findFirst({
@@ -349,6 +405,45 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
   } catch (error) {
     console.error("Error fetching liked quizzes:", error)
     return []
+  }
+}
+
+export async function addQuizFavourite(quizId: number, userId: number) {
+  try {
+    const existingFavorite = await prisma.favourite.findFirst({
+      where: {
+        quiz_id: quizId,
+        user_id: userId,
+      },
+  });
+
+    if (existingFavorite) {
+      return true; // Jak funkcja jest wywoływana, to zwrócona wartość mówi czy jest ok czy nie, więc zwracam true
+    } else {
+      return await prisma.favourite.create({
+        data: {
+          quiz_id: quizId,
+          user_id: userId,
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error quiz rating: " + error);
+    return null;
+  }
+}
+
+export async function removeQuizFavourite(quizId: number, userId: number) {
+  try {
+    return await prisma.favourite.deleteMany({ // delete wymaga unikalnego id, więc używam deleteMany, na wszelki wypadek nie będę modyfikował bazy danych
+      where: {
+        quiz_id: quizId,
+        user_id: userId,
+      }
+    });
+  } catch (error) {
+    console.error("Error removing quiz favourite:", error);
+    return null;
   }
 }
 

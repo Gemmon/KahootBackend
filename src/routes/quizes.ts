@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite } from "../db.js";
 import { get } from "http";
 
 export interface QuizRequestBody{
@@ -112,10 +112,69 @@ export default async function routes(fastify: FastifyInstance, options: any) {
             offset?: string
             sort_by?: "created_at" | "likes" | "title"
         }
-        const limit = Number(query.limit)
-        const offset = Number(query.offset)
+        const limit = Number(query.limit) || 100;
+        const offset = Number(query.offset) || 0;
         const sort_by = query.sort_by;
         const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by);
         reply.status(200).send({data:quizes})
+    });
+
+    fastify.post("/quizes/:id/favourite", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizId = parseInt((request.params as {id:string}).id)
+        if(isNaN(quizId)){
+            return reply.status(400).send({ message: 'Invalid quiz ID' });
+        }
+
+        const userId = getUserId(request)
+        if(isNaN(userId)){
+            return reply.status(400).send({ message: 'Invalid user ID' });
+        }
+
+        const quiz = await addQuizFavourite(quizId, userId)
+        if(quiz){
+            reply.status(200).send({
+                success: true,
+                message: "Quiz favourite."
+            })
+        } else {
+            reply.status(404).send({message:'Quiz not found'})
+        }
+    })
+
+    fastify.delete("/quizes/:id/favourite", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizId = parseInt((request.params as {id:string}).id)
+        if(isNaN(quizId)){
+            return reply.status(400).send({ message: 'Invalid quiz ID' });
+        }
+
+        const userId = getUserId(request)
+        if(isNaN(userId)){
+            return reply.status(400).send({ message: 'Invalid user ID' });
+        }
+
+        const quiz = await removeQuizFavourite(quizId, userId)
+        if(quiz){
+            reply.status(200).send({
+                success: true,
+                message: "Quiz not favourite."
+            })
+        } else {
+            reply.status(404).send({message:'Quiz not found'})
+        }
+    })
+    fastify.get("/quizes/own", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const query = request.query as {
+            limit: string,
+            offset?: string
+            sort_by?: "created_at" | "likes" | "title",
+            reverse?: string
+        }
+        const limit = Number(query.limit) || 100;
+        const offset = Number(query.offset) || 0;
+        const sort_by = query.sort_by;
+        const userId = getUserId(request);
+        const reverse = query.reverse === 'true' || query.reverse === '1';
+        const ownQuizzes = await getUserQuizes(limit, offset, userId, sort_by, reverse);
+        reply.status(200).send({data: ownQuizzes})
     });
 }
