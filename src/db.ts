@@ -102,6 +102,54 @@ export async function removeQuizById(quizId: number, userId: number) {
   }
 }
 
+export async function deleteQuestionsForQuiz(quizId:number){
+  try {
+    return await prisma.question.deleteMany({
+      where: {
+        quiz_id: quizId
+      }
+    })
+  } catch (error) {
+    console.error("Error deleting questions for quiz: " + error);
+    return null;
+  }
+}
+export async function addQuestionsToQuiz(quizId: number, questions: Array<{ content: string, answers: Array<{ content: string, is_correct: boolean }>, partial_points?: boolean, negative_points?: boolean, max_points: number }>) {
+  try {
+    const questionPromises = questions.map(async (question) => {
+      const createdQuestion = await prisma.question.create({
+        data: {
+          quiz_id: quizId,
+          content: question.content,
+          partial_points: question.partial_points ?? null,
+          negative_points: question.negative_points ?? null,
+          max_points: question.max_points
+        }
+      });
+
+      const answerPromises = question.answers.map((answer) => {
+        return prisma.answer.create({
+          data: {
+            question_id: createdQuestion.id,
+            content: answer.content,
+            is_correct: answer.is_correct
+          }
+        });
+      });
+
+      await Promise.all(answerPromises);
+      return createdQuestion;
+    });
+
+    return await Promise.all(questionPromises);
+  } catch (error) {
+    console.error("Error adding questions to quiz: " + error);
+    return null;
+  }
+}
+
+
+
 export async function editQuiz(quizData: EditQuizRequestBody, userId: number) {
   try {
     return await prisma.quiz.update({
