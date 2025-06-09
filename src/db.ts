@@ -84,6 +84,21 @@ export async function getQuizById(quizId: number, userId: number){
   }
 }
 
+export async function getFullQuizById(id: number){
+  return await prisma.quiz.findFirst({
+    where: {
+      id: id
+    },
+    include: {
+      Question: {
+        include: {
+          Answer: true
+        }
+      }
+    }
+  })
+}
+
 export async function removeQuizById(quizId: number, userId: number) {
   try {
     return await prisma.quiz.update({
