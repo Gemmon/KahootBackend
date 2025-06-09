@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { sha256 } from "../functions.js";
-import { findRecoveryCode, findUserByEmail, login, saveRecoveryCode } from "../db.js";
+import { changeUserData, findRecoveryCode, findUserByEmail, login, saveRecoveryCode } from "../db.js";
 import prisma from "../db.js"
 import { sendRecoveryEmail } from "../services/mailer.js";
 import { emit } from "process";
@@ -59,6 +59,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
             }
         }else{
             return reply.status(400).send({message:"No user found with this email"})
+        }
+    })
+
+    // patch /me zmiana username i avatara
+    fastify.patch("/me", {preHandler: [fastify.authenticate]}, async (request, reply) => {
+        const newData = request.body as {name?: string, avatar?: string}
+        const userId = getUserId(request)
+        const user = await changeUserData(userId, newData)
+        if(user) {
+            reply.status(200).send({ succes: true, message: "super wszystko"})
+        } else {
+            reply.status(500).send({ succes: false }) 
         }
     })
 
