@@ -5,6 +5,7 @@ import prisma from "../db.js"
 import { sendRecoveryEmail } from "../services/mailer.js";
 import { emit } from "process";
 import { generatePasswordResetToken, generateRecoveryCode } from "../services/recoveryCode.js";
+import {getUserId} from "./quizes.js"
 
 
 
@@ -137,6 +138,28 @@ export default async function authRoutes(fastify: FastifyInstance) {
         } catch (error) {
             return reply.status(500).send({message: "User not found"})
         }
+    })
+
+    // /recover/change-password - zmiana hasla
+    fastify.post("/recover/change-password", {preHandler: [fastify.authenticate]},async(request, reply) => {
+        const user=getUserId(request)
+        const { newPassword } = request.body as { newPassword: string }
+        if(!user || isNaN(user)){
+            return reply.status(400).send({ message: "Invalid user ID" })
+        }
+        const hashedPassword = sha256(newPassword)
+        if(!hashedPassword){
+            return reply.status(400).send({ message: "Password hashing failed" })
+        }
+        const updatedUser=await prisma.user.update({
+            where: { id: user },
+            data: { password: hashedPassword }
+        })
+        if(!updatedUser){
+            return reply.status(500).send({ message: "Failed to update password" })
+        }
+        return reply.status(200).send({ message: "Password changed successfully" })
+
     })
 
 }
