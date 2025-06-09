@@ -217,6 +217,7 @@ export default function setupSocket(io: Server) {
       console.log(`Next question requested by ${socket.username} (${socket.uuid}) in game ${socket.gameId}`);
       var game: GameData;
       if (socket.host && (game = gameData[socket.gameId])) {
+        io.to(socket.gameId).emit("game:ranking", getRanking(game));
         game.players.forEach(player => player.answered = false);
         if (game.state !== "playing") {
           game.state = "playing";
@@ -263,8 +264,6 @@ export default function setupSocket(io: Server) {
               console.log(`Player ${player.username} answered question ${questionIdx} incorrectly`);
               cb(0);
             }
-            if (game.players.every(p => p.answered))
-              io.to(socket.gameId).emit("game:ranking", getRanking(game));
           }
         } else {
           console.log(`Game ${socket.gameId} is not in playing state`);
