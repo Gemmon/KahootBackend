@@ -100,7 +100,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
 
         const result = likedQuizzes.map(q => ({
             id: q.id,
-            title: q.titile
+            title: q.title
         }))
 
         reply.status(200).send(result)

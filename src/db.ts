@@ -23,7 +23,7 @@ export async function addQuiz(quizData: QuizRequestBody, userId: number){
   try {
     const quiz = await prisma.quiz.create({
       data: {
-        titile: quizData.title,
+        title: quizData.title,
         description: quizData.description,
         created_by: userId,
         is_public: quizData.is_public,
@@ -56,6 +56,21 @@ export async function getQuizById(id: number){
   })
 }
 
+export async function getFullQuizById(id: number){
+  return await prisma.quiz.findFirst({
+    where: {
+      id: id
+    },
+    include: {
+      Question: {
+        include: {
+          Answer: true
+        }
+      }
+    }
+  })
+}
+
 export async function removeQuizById(quizId: number, userId: number) {
   try {
     return await prisma.quiz.update({
@@ -82,7 +97,7 @@ export async function editQuiz(quizData:EditQuizRequestBody, userId: number) {
         created_by: userId
       },
       data: {
-        titile: quizData.title,
+        title: quizData.title,
         description: quizData.description,
         is_public: quizData.is_public
       }
@@ -300,7 +315,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
       },
       select: {
         id: true,
-        titile: true,
+        title: true,
         created_at: true,
         Rating: {
           select: {
@@ -320,7 +335,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
     const sorted = quizzesWithAvgRating.sort((a, b) => {
       switch (sortBy) {
         case "title":
-          return a.titile.localeCompare(b.titile)
+          return a.title.localeCompare(b.title)
         case "rating":
           return b.avgRating - a.avgRating
         case "created_at":
