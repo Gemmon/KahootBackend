@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite,deleteQuestionsForQuiz, addQuestionsToQuiz } from "../db.js";
 import { get } from "http";
+import { Favourite, Quiz } from "@prisma/client";
 
 
 export interface QuizRequestBody{
@@ -101,7 +102,8 @@ export default async function routes(fastify: FastifyInstance, options: any) {
 
         const result = likedQuizzes.map(q => ({
             id: q.id,
-            title: q.title
+            title: q.title,
+            isLiked: true
         }))
 
         reply.status(200).send(result)
@@ -116,7 +118,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const limit = Number(query.limit) || 100;
         const offset = Number(query.offset) || 0;
         const sort_by = query.sort_by;
-        const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by);
+        const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by) ?? [];
         reply.status(200).send({data:quizes})
     });
 
@@ -175,7 +177,8 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const sort_by = query.sort_by;
         const userId = getUserId(request);
         const reverse = query.reverse === 'true' || query.reverse === '1';
-        const ownQuizzes = await getUserQuizes(limit, offset, userId, sort_by, reverse);
+        const ownQuizzes: (Quiz & { isLiked?: boolean } & { Favourite?: Favourite[] })[] = await getUserQuizes(limit, offset, userId, sort_by, reverse) ?? [];
+        ownQuizzes.forEach(q => { q.isLiked = q.Favourite && q.Favourite.length > 0; delete q.Favourite; });
         reply.status(200).send({data: ownQuizzes})
     });
 

@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, User, Quiz, User_recovery } from "@prisma/client";
+import { PrismaClient, Prisma, User, Quiz, User_recovery, Favourite } from "@prisma/client";
 import { sha256 } from "./functions.js";
 import { title } from "process";
 import { EditQuizRequestBody, QuizRequestBody } from "./routes/quizes.js";
@@ -53,6 +53,18 @@ export async function getQuizById(quizId: number, userId: number){
   const quiz = await prisma.quiz.findFirst({
     where: {
       id: quizId
+    },
+    include: {
+      User: {
+        select: {
+          username: true,
+        }
+      },
+      Favourite: {
+        where: {
+          user_id: userId,
+        }
+      }
     }
   })
 
@@ -80,7 +92,9 @@ export async function getQuizById(quizId: number, userId: number){
     description: quiz.description,
     questions: questions,
     ownerId: quiz.created_by,
+    ownerName: quiz.User.username,
     isOwner: quiz.created_by === userId,
+    isLiked: quiz.Favourite.length > 0,
   }
 }
 
@@ -199,6 +213,13 @@ export async function getSuggestedQuizes(
     },
     orderBy: {
       created_at: 'desc'
+    },
+    include: {
+      Favourite: {
+        where: {
+          user_id: userId || -1
+        }
+      }
     }
   })
   if (quizes.length === 0) {
@@ -212,6 +233,8 @@ export async function getSuggestedQuizes(
   const timeGap: number = endTime - startTime;
   const scoredQuizes = quizes.map(q => ({
     ...q,
+    isLiked: q.Favourite && q.Favourite.length > 0,
+    Favourite: undefined,
     score: 0.6 * ((q.likes - minLikes) / likesGap) + 0.4 * (q.rating_avg / 5) + 0.1 * ((q.created_at.getTime() - startTime) / timeGap)
   })).sort((a, b) => b.score - a.score);
 
@@ -275,6 +298,13 @@ export async function getUserQuizes(
         orderBy: {
           [sort_by]: reverse ? 'asc' : 'desc'
         },
+        include: {
+          Favourite: {
+            where: {
+              user_id: userId
+            }
+          }
+        }
       });
   } 
   catch (error) {

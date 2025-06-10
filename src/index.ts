@@ -29,7 +29,8 @@ fastify.register(jwtPlugin)
 fastify.register(authRoutes)
 
 fastify.register(cors, {
-  origin: true
+  origin: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"]
 })
 
 
