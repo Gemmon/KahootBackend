@@ -132,7 +132,6 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const quizes = await getQuizHistoryByUser(userId, limit)
         reply.status(200).send({data:quizes})
     });
-}
     fastify.post("/quizes/:id/favourite", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizId = parseInt((request.params as {id:string}).id)
         if(isNaN(quizId)){
