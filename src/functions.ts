@@ -3,13 +3,3 @@ import { BinaryLike, createHash } from "crypto"
 export function sha256(content: BinaryLike): string {  
   return createHash('sha256').update(content).digest('hex')
 }
-
-export function generateRandomString(length: number): string {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    result += characters[randomIndex];
-  }
-  return result;
-}

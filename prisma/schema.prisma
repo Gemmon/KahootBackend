@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Answer {
-  id          Int      @id @unique(map: "id") @default(autoincrement())
+  id          Int      @id @unique(map: "id")
   question_id Int
   content     String   @db.Text
   is_correct  Boolean
@@ -18,7 +18,7 @@ model Answer {
 }
 
 model Comment {
-  id         Int       @id @unique(map: "id") @default(autoincrement())
+  id         Int       @id @unique(map: "id")
   quiz_id    Int?
   user_id    Int?
   content    String?   @db.Text
@@ -33,7 +33,7 @@ model Comment {
 }
 
 model Favourite {
-  id      Int  @id @unique(map: "id") @default(autoincrement())
+  id      Int  @id @unique(map: "id")
   user_id Int
   quiz_id Int
   Quiz    Quiz @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Favourite_ibfk_1")
@@ -44,7 +44,7 @@ model Favourite {
 }
 
 model Game {
-  id          Int           @id @unique(map: "id") @default(autoincrement())
+  id          Int           @id @unique(map: "id")
   quiz_id     Int
   host_id     Int
   started_at  DateTime      @db.DateTime(0)
@@ -58,7 +58,7 @@ model Game {
 }
 
 model Game_player {
-  id         Int       @id @unique(map: "id") @default(autoincrement())
+  id         Int       @id @unique(map: "id")
   game_id    Int
   user_id    Int?
   guest_name String?   @db.VarChar(500)
@@ -72,7 +72,7 @@ model Game_player {
 }
 
 model Question {
-  id              Int      @id @unique(map: "id") @default(autoincrement())
+  id              Int      @id @unique(map: "id")
   quiz_id         Int
   content         String?  @db.Text
   partial_points  Boolean?
@@ -85,15 +85,13 @@ model Question {
 }
 
 model Quiz {
-  id          Int         @id @unique(map: "id") @default(autoincrement())
-  title       String      @db.VarChar(500)
+  id          Int         @id @unique(map: "id")
+  titile      String      @db.VarChar(500)
   description String      @db.Text
   created_by  Int
   is_public   Boolean
   created_at  DateTime    @db.DateTime(0)
   is_removed  Boolean?
-  likes       Int         @default(0) @db.UnsignedInt
-  rating_avg  Float       @default(0)
   Comment     Comment[]
   Favourite   Favourite[]
   Game        Game[]
@@ -117,7 +115,7 @@ model Quiz_tag {
 }
 
 model Rating {
-  id      Int  @id @unique(map: "id") @default(autoincrement())
+  id      Int  @id @unique(map: "id")
   quiz_id Int
   user_id Int
   rating  Int
@@ -129,7 +127,7 @@ model Rating {
 }
 
 model Report {
-  id                            Int      @id @unique(map: "id") @default(autoincrement())
+  id                            Int      @id @unique(map: "id")
   user_id                       Int?
   quiz_id                       Int?
   comment_id                    Int?
@@ -149,35 +147,24 @@ model Report {
 }
 
 model Tag {
-  id       Int        @id @unique(map: "id") @default(autoincrement())
+  id       Int        @id @unique(map: "id")
   name     String     @db.VarChar(500)
   Quiz_tag Quiz_tag[]
 }
 
 model User {
-  id                              Int             @id @unique(map: "id") @default(autoincrement())
-  username                        String          @db.VarChar(500)
-  email                           String          @unique(map: "User_UNIQUE") @db.VarChar(500)
-  password                        String          @db.VarChar(500)
+  id                              Int           @id @unique(map: "id")
+  username                        String        @db.VarChar(500)
+  email                           String        @unique(map: "User_UNIQUE") @db.VarChar(500)
+  password                        String        @db.VarChar(500)
   is_admin                        Boolean
-  created_at                      DateTime        @default(now()) @db.DateTime(0)
+  created_at                      DateTime      @db.DateTime(0)
   Comment                         Comment[]
   Favourite                       Favourite[]
   Game                            Game[]
   Game_player                     Game_player[]
   Quiz                            Quiz[]
   Rating                          Rating[]
-  Report_Report_reviewed_byToUser Report[]        @relation("Report_reviewed_byToUser")
-  Report_Report_user_idToUser     Report[]        @relation("Report_user_idToUser")
-  User_recovery                   User_recovery[]
-}
-
-model User_recovery {
-  user_id Int
-  code    String   @db.VarChar(50)
-  expires DateTime @db.DateTime(0)
-  issued  DateTime @default(now()) @db.DateTime(0)
-  User    User     @relation(fields: [user_id], references: [id], onDelete: Cascade, map: "User_recovery_User_FK")
-
-  @@id([user_id, code, expires])
+  Report_Report_reviewed_byToUser Report[]      @relation("Report_reviewed_byToUser")
+  Report_Report_user_idToUser     Report[]      @relation("Report_user_idToUser")
 }
