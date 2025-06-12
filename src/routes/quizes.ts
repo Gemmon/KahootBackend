@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite,deleteQuestionsForQuiz, addQuestionsToQuiz } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite,deleteQuestionsForQuiz, addQuestionsToQuiz, clearUserQuizHistory } from "../db.js";
 import { get } from "http";
 import { Favourite, Quiz } from "@prisma/client";
 
@@ -235,4 +235,25 @@ export default async function routes(fastify: FastifyInstance, options: any) {
                 return reply.status(500).send({ message: 'Internal server error.' });
             }
     })
+
+
+    //POST /quizzes/history/clear, usówa historię quzów, w których użytkownik brał udział (usuwa elemnty z game_players)
+    fastify.post("/quizzes/history/clear", {
+        preHandler: [fastify.authenticate],
+        handler: async (request, reply) => {
+            const success = await clearUserQuizHistory(getUserId(request));
+
+            if (success) {
+                reply.code(200).send({
+                    success: true,
+                    message: "History has been cleared."
+                });
+            } else {
+                reply.code(500).send({
+                    success: false,
+                    message: "Internal server error."
+                });
+            }
+        }
+    });
 }

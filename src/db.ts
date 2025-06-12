@@ -332,6 +332,21 @@ export async function getUserQuizes(
   }
 }
 
+//Usuwanie historii quizów użytkownika (z tabeli game_players)
+export async function clearUserQuizHistory(userId: number) {
+  try {
+    await prisma.game_player.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
+    return true;
+  } catch (error) {
+    console.error("Error clearing user quiz history:", error);
+    return false;
+  }
+}
+
 export async function findUserByEmail(userEmail:string) {
   try{
     const user = await prisma.user.findFirst({
