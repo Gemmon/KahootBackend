@@ -48,7 +48,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.get("/quizes", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+    fastify.get("/quizes", async(request, reply) => {
         const query = request.query as {
             limit?: string,
             offset?: string

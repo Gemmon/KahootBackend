@@ -18,6 +18,26 @@ export async function login(email: string, password: string): Promise<User | nul
   });
 }
 
+export async function changeUserData(id: number, data: {name?: string, avatar?: string}) {
+    const updateData: any = {};
+
+  if (data.name !== undefined) {
+    updateData.username = data.name;
+  }
+
+  // dodawanie avatara?
+  // if (data.avatar !== undefined) {
+  //   updateData.avatar = data.avatar;
+  // }
+
+  return await prisma.user.update({
+    data: updateData,
+    where: { 
+      id: id 
+    },
+  });
+}
+
 
 //Quizy
 export async function addQuiz(quizData: QuizRequestBody, userId: number){
