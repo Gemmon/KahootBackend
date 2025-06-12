@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { sha256 } from "../functions.js";
-import { findRecoveryCode, findUserByEmail, login, saveRecoveryCode } from "../db.js";
+import { changeUserData, findRecoveryCode, findUserByEmail, login, saveRecoveryCode } from "../db.js";
 import prisma from "../db.js"
 import { sendRecoveryEmail } from "../services/mailer.js";
 import { emit } from "process";
 import { generatePasswordResetToken, generateRecoveryCode } from "../services/recoveryCode.js";
+import {getUserId} from "./quizes.js"
 
 
 
@@ -58,6 +59,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
             }
         }else{
             return reply.status(400).send({message:"No user found with this email"})
+        }
+    })
+
+    // patch /me zmiana username i avatara
+    fastify.patch("/me", {preHandler: [fastify.authenticate]}, async (request, reply) => {
+        const newData = request.body as {name?: string, avatar?: string}
+        const userId = getUserId(request)
+        const user = await changeUserData(userId, newData)
+        if(user) {
+            reply.status(200).send({ succes: true, message: "super wszystko"})
+        } else {
+            reply.status(500).send({ succes: false }) 
         }
     })
 
@@ -137,6 +150,28 @@ export default async function authRoutes(fastify: FastifyInstance) {
         } catch (error) {
             return reply.status(500).send({message: "User not found"})
         }
+    })
+
+    // /recover/change-password - zmiana hasla
+    fastify.post("/recover/change-password", {preHandler: [fastify.authenticate]},async(request, reply) => {
+        const user=getUserId(request)
+        const { newPassword } = request.body as { newPassword: string }
+        if(!user || isNaN(user)){
+            return reply.status(400).send({ message: "Invalid user ID" })
+        }
+        const hashedPassword = sha256(newPassword)
+        if(!hashedPassword){
+            return reply.status(400).send({ message: "Password hashing failed" })
+        }
+        const updatedUser=await prisma.user.update({
+            where: { id: user },
+            data: { password: hashedPassword }
+        })
+        if(!updatedUser){
+            return reply.status(500).send({ message: "Failed to update password" })
+        }
+        return reply.status(200).send({ message: "Password changed successfully" })
+
     })
 
 }

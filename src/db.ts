@@ -1,8 +1,9 @@
-import { PrismaClient, Prisma, User, Quiz, User_recovery } from "@prisma/client";
+import { PrismaClient, Prisma, User, Quiz, User_recovery, Favourite } from "@prisma/client";
 import { sha256 } from "./functions.js";
 import { title } from "process";
 import { EditQuizRequestBody, QuizRequestBody } from "./routes/quizes.js";
 import { ReportRequestBody } from "./routes/reports.js";
+import { CommentRequestBody } from "./routes/comments.js";
 
 const prisma = new PrismaClient();
 
@@ -17,13 +18,33 @@ export async function login(email: string, password: string): Promise<User | nul
   });
 }
 
+export async function changeUserData(id: number, data: {name?: string, avatar?: string}) {
+    const updateData: any = {};
+
+  if (data.name !== undefined) {
+    updateData.username = data.name;
+  }
+
+  // dodawanie avatara?
+  // if (data.avatar !== undefined) {
+  //   updateData.avatar = data.avatar;
+  // }
+
+  return await prisma.user.update({
+    data: updateData,
+    where: { 
+      id: id 
+    },
+  });
+}
+
 
 //Quizy
 export async function addQuiz(quizData: QuizRequestBody, userId: number){
   try {
     const quiz = await prisma.quiz.create({
       data: {
-        titile: quizData.title,
+        title: quizData.title,
         description: quizData.description,
         created_by: userId,
         is_public: quizData.is_public,
@@ -48,10 +69,66 @@ export async function getQuizes(limit: number, offset: number) {
   })
 }
 
-export async function getQuizById(id: number){
+export async function getQuizById(quizId: number, userId: number){
+  const quiz = await prisma.quiz.findFirst({
+    where: {
+      id: quizId
+    },
+    include: {
+      User: {
+        select: {
+          username: true,
+        }
+      },
+      Favourite: {
+        where: {
+          user_id: userId,
+        }
+      }
+    }
+  })
+
+  if(!quiz)
+    return null;
+
+  const questions = await prisma.question.findMany({
+    where: {
+      quiz_id: quizId,
+    },
+  })
+
+  for (const question of questions) {
+    const answers = await prisma.answer.findMany({
+      where: {
+        question_id: question.id,
+      },
+    });
+    (question as any).answers = answers; //"as any" żeby TS nie narzekał na brak pola answers, nie mam pojęcia jak to zrobić lepiej
+  }
+
+  return {
+    quizId: quiz.id,
+    title: quiz.title,
+    description: quiz.description,
+    questions: questions,
+    ownerId: quiz.created_by,
+    ownerName: quiz.User.username,
+    isOwner: quiz.created_by === userId,
+    isLiked: quiz.Favourite.length > 0,
+  }
+}
+
+export async function getFullQuizById(id: number){
   return await prisma.quiz.findFirst({
     where: {
       id: id
+    },
+    include: {
+      Question: {
+        include: {
+          Answer: true
+        }
+      }
     }
   })
 }
@@ -74,6 +151,54 @@ export async function removeQuizById(quizId: number, userId: number) {
   }
 }
 
+export async function deleteQuestionsForQuiz(quizId:number){
+  try {
+    return await prisma.question.deleteMany({
+      where: {
+        quiz_id: quizId
+      }
+    })
+  } catch (error) {
+    console.error("Error deleting questions for quiz: " + error);
+    return null;
+  }
+}
+export async function addQuestionsToQuiz(quizId: number, questions: Array<{ content: string, answers: Array<{ content: string, is_correct: boolean }>, partial_points?: boolean, negative_points?: boolean, max_points: number }>) {
+  try {
+    const questionPromises = questions.map(async (question) => {
+      const createdQuestion = await prisma.question.create({
+        data: {
+          quiz_id: quizId,
+          content: question.content,
+          partial_points: question.partial_points ?? null,
+          negative_points: question.negative_points ?? null,
+          max_points: question.max_points
+        }
+      });
+
+      const answerPromises = question.answers.map((answer) => {
+        return prisma.answer.create({
+          data: {
+            question_id: createdQuestion.id,
+            content: answer.content,
+            is_correct: answer.is_correct
+          }
+        });
+      });
+
+      await Promise.all(answerPromises);
+      return createdQuestion;
+    });
+
+    return await Promise.all(questionPromises);
+  } catch (error) {
+    console.error("Error adding questions to quiz: " + error);
+    return null;
+  }
+}
+
+
+
 export async function editQuiz(quizData: EditQuizRequestBody, userId: number) {
   try {
     return await prisma.quiz.update({
@@ -82,7 +207,7 @@ export async function editQuiz(quizData: EditQuizRequestBody, userId: number) {
         created_by: userId
       },
       data: {
-        titile: quizData.title,
+        title: quizData.title,
         description: quizData.description,
         is_public: quizData.is_public
       }
@@ -108,6 +233,13 @@ export async function getSuggestedQuizes(
     },
     orderBy: {
       created_at: 'desc'
+    },
+    include: {
+      Favourite: {
+        where: {
+          user_id: userId || -1
+        }
+      }
     }
   })
   if (quizes.length === 0) {
@@ -121,6 +253,8 @@ export async function getSuggestedQuizes(
   const timeGap: number = endTime - startTime;
   const scoredQuizes = quizes.map(q => ({
     ...q,
+    isLiked: q.Favourite && q.Favourite.length > 0,
+    Favourite: undefined,
     score: 0.6 * ((q.likes - minLikes) / likesGap) + 0.4 * (q.rating_avg / 5) + 0.1 * ((q.created_at.getTime() - startTime) / timeGap)
   })).sort((a, b) => b.score - a.score);
 
@@ -129,10 +263,88 @@ export async function getSuggestedQuizes(
   } else if (sort_by === "likes") {
     scoredQuizes.sort((a, b) => b.likes - a.likes);
   } else if (sort_by === "title") {
-    scoredQuizes.sort((a, b) => a.titile.localeCompare(b.titile));
+    scoredQuizes.sort((a, b) => a.title.localeCompare(b.title));
   }
 
   return scoredQuizes.slice(offset, offset + limit);
+}
+
+// Tagi
+export async function getTags(limit: number, offset: number) {
+  return await prisma.tag.findMany({
+    ...(offset ? { skip: offset } : {}),
+    ...(limit ? { take: limit } : {}),
+  })
+}
+
+export async function createTag(name: string) {
+  try {
+    const isExisting = await prisma.tag.findFirst({
+      where: {
+        name: name,
+      },
+    })
+
+    if (isExisting) { 
+      return undefined 
+    }
+
+    const tag = await prisma.tag.create({
+      data: {
+        name: name
+      }
+    })
+    
+    return tag
+  } catch(error) {
+    return null
+  }
+}
+
+export async function getUserQuizes(
+  limit: number, 
+  offset: number,
+  userId: number,
+  sort_by: "created_at" | "likes" | "title" = "created_at",
+  reverse: boolean = false) {
+  try {
+      return await prisma.quiz.findMany({
+        where: {
+          created_by: userId,
+          is_removed: false
+        },
+        skip: offset,
+        take: limit,
+        orderBy: {
+          [sort_by]: reverse ? 'asc' : 'desc'
+        },
+        include: {
+          Favourite: {
+            where: {
+              user_id: userId
+            }
+          }
+        }
+      });
+  } 
+  catch (error) {
+    return null;
+  }
+}
+
+//Usuwanie historii quizów użytkownika (z tabeli game_players)
+export async function clearUserQuizHistory(userId: number) {
+  try {
+    await prisma.game_player.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
+    return true;
+  } catch (error) {
+    console.error("Error clearing user quiz history:", error);
+    return false;
+  }
 }
 
 export async function findUserByEmail(userEmail:string) {
@@ -315,7 +527,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
       },
       select: {
         id: true,
-        titile: true,
+        title: true,
         created_at: true,
         Rating: {
           select: {
@@ -335,7 +547,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
     const sorted = quizzesWithAvgRating.sort((a, b) => {
       switch (sortBy) {
         case "title":
-          return a.titile.localeCompare(b.titile)
+          return a.title.localeCompare(b.title)
         case "rating":
           return b.avgRating - a.avgRating
         case "created_at":
@@ -350,7 +562,6 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
     return []
   }
 }
-
 export async function getQuizHistoryByUser(userId: number, limit: number){
   try {
     const games = await prisma.game.findMany({
@@ -381,5 +592,117 @@ export async function getQuizHistoryByUser(userId: number, limit: number){
   } catch (error) {
     console.log(error)
     return []
+  }
+}
+export async function addQuizFavourite(quizId: number, userId: number) {
+  try {
+    const existingFavorite = await prisma.favourite.findFirst({
+      where: {
+        quiz_id: quizId,
+        user_id: userId,
+      },
+  });
+
+    if (existingFavorite) {
+      return true; // Jak funkcja jest wywoływana, to zwrócona wartość mówi czy jest ok czy nie, więc zwracam true
+    } else {
+      return await prisma.favourite.create({
+        data: {
+          quiz_id: quizId,
+          user_id: userId,
+        }
+      });
+    }
+  } catch (error) {
+    console.error("Error quiz rating: " + error);
+    return null;
+  }
+}
+
+export async function removeQuizFavourite(quizId: number, userId: number) {
+  try {
+    return await prisma.favourite.deleteMany({ // delete wymaga unikalnego id, więc używam deleteMany, na wszelki wypadek nie będę modyfikował bazy danych
+      where: {
+        quiz_id: quizId,
+        user_id: userId,
+      }
+    });
+  } catch (error) {
+    console.error("Error removing quiz favourite:", error);
+    return null;
+  }
+}
+
+
+//KOMENTOWANIE
+export async function addComment(commentData: CommentRequestBody) {
+  try {
+
+    const comment = await prisma.comment.create({
+      data: {
+        quiz_id: commentData.quiz_id,
+        user_id: commentData.user_id,
+        content: commentData.content,
+        created_at: new Date(),
+        is_removed: false,
+      }
+    })
+    return comment;
+  } catch (error) {
+    console.error("Error creating comment: " + error);
+    return null;
+  }
+}
+
+export async function getCommentsOfQuiz(id: number) {
+  console.log("Getting comments of quiz: " + id);
+  return await prisma.comment.findMany({
+    where: {
+      quiz_id: id,
+      is_removed: false
+    }
+  })
+}
+
+export async function getCommentsOfUser(id: number) {
+  console.log("Getting comments of User: " + id);
+  return await prisma.comment.findMany({
+    where: {
+      user_id: id,
+      is_removed: false
+    }
+  })
+}
+
+export async function updateComment(id: number, commentData: CommentRequestBody){
+  try{
+    const comment = await prisma.comment.update({
+      where: {
+        id: id,
+      },
+      data: {
+        content: commentData.content,
+        created_at: new Date(),
+      }
+    });
+    return comment;
+  }
+  catch(error){
+    console.error("Error updating comment: " + error);
+    return null;
+  }
+}
+
+export async function deleteComment(id: number){
+  try{
+    const comment = await prisma.comment.update({
+      where: { id },
+      data: { is_removed: true }
+    })
+    return comment;
+  }
+  catch(error){
+    console.error("Error deleting comment: " + error)
+    return null;
   }
 }

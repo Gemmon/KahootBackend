@@ -7,19 +7,20 @@ import authRoutes from "./routes/auth.js"
 import quizes from "./routes/quizes.js"
 import 'dotenv/config.js'
 import report from "./routes/reports.js";
+import tags from "./routes/tags.js";
+import comment from "./routes/comments.js";
+import setupSocket from "./multiplayer.js";
 
 var server: ReturnType<typeof createServer>;
-var io;
+var io: Server;
 
 const fastify = Fastify({
   logger: true,
   serverFactory: (handler) => {
     server = createServer(handler);
-    io = new Server(server, {  });
+    io = new Server(server, { connectionStateRecovery: {} });
+    setupSocket(io);
 
-    io.on("connection", (socket) => {
-      console.log('User connected');
-    });
     return server;
   }
 })
@@ -28,12 +29,15 @@ fastify.register(jwtPlugin)
 fastify.register(authRoutes)
 
 fastify.register(cors, {
-  origin: true
+  origin: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"]
 })
 
 
 fastify.register(quizes)
 fastify.register(report)
+fastify.register(tags)
+fastify.register(comment)
 
 fastify.get("/", async (request, reply) => {
   return { hello: "world" };

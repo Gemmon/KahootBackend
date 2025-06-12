@@ -1,6 +1,8 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getQuizHistoryByUser } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getQuizHistoryByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite,deleteQuestionsForQuiz, addQuestionsToQuiz, clearUserQuizHistory } from "../db.js";
 import { get } from "http";
+import { Favourite, Quiz } from "@prisma/client";
+
 
 export interface QuizRequestBody{
     title: string,
@@ -28,7 +30,7 @@ const schema = {
     }
 }
 
-function getUserId(request: any){
+export function getUserId(request: any){
     const user = request.user as {id: number}
     return user.id
 }
@@ -46,7 +48,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         }
     })
 
-    fastify.get("/quizes", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+    fastify.get("/quizes", async(request, reply) => {
         const query = request.query as {
             limit?: string,
             offset?: string
@@ -57,11 +59,11 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         reply.status(200).send({data:quizes})
     })
 
-    fastify.get("/quizes/:id", async(request, reply) => {
+    fastify.get("/quizes/:id", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizId = parseInt((request.params as {id:string}).id)
-        const quiz = await getQuizById(quizId)
+        const quiz = await getQuizById(quizId, getUserId(request))
         if(quiz){
-            reply.status(200).send({data:quiz})
+            reply.status(200).send({quiz})
         } else {
             reply.status(404).send({message: 'Quiz not found'})
         }
@@ -100,7 +102,8 @@ export default async function routes(fastify: FastifyInstance, options: any) {
 
         const result = likedQuizzes.map(q => ({
             id: q.id,
-            title: q.titile
+            title: q.title,
+            isLiked: true
         }))
 
         reply.status(200).send(result)
@@ -112,10 +115,10 @@ export default async function routes(fastify: FastifyInstance, options: any) {
             offset?: string
             sort_by?: "created_at" | "likes" | "title"
         }
-        const limit = Number(query.limit)
-        const offset = Number(query.offset)
+        const limit = Number(query.limit) || 100;
+        const offset = Number(query.offset) || 0;
         const sort_by = query.sort_by;
-        const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by);
+        const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by) ?? [];
         reply.status(200).send({data:quizes})
     });
 
@@ -128,5 +131,140 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const limit = query.limit == null ? 12 : Number(query.limit)
         const quizes = await getQuizHistoryByUser(userId, limit)
         reply.status(200).send({data:quizes})
+    });
+}
+    fastify.post("/quizes/:id/favourite", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizId = parseInt((request.params as {id:string}).id)
+        if(isNaN(quizId)){
+            return reply.status(400).send({ message: 'Invalid quiz ID' });
+        }
+
+        const userId = getUserId(request)
+        if(isNaN(userId)){
+            return reply.status(400).send({ message: 'Invalid user ID' });
+        }
+
+        const quiz = await addQuizFavourite(quizId, userId)
+        if(quiz){
+            reply.status(200).send({
+                success: true,
+                message: "Quiz favourite."
+            })
+        } else {
+            reply.status(404).send({message:'Quiz not found'})
+        }
+    })
+
+    fastify.delete("/quizes/:id/favourite", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const quizId = parseInt((request.params as {id:string}).id)
+        if(isNaN(quizId)){
+            return reply.status(400).send({ message: 'Invalid quiz ID' });
+        }
+
+        const userId = getUserId(request)
+        if(isNaN(userId)){
+            return reply.status(400).send({ message: 'Invalid user ID' });
+        }
+
+        const quiz = await removeQuizFavourite(quizId, userId)
+        if(quiz){
+            reply.status(200).send({
+                success: true,
+                message: "Quiz not favourite."
+            })
+        } else {
+            reply.status(404).send({message:'Quiz not found'})
+        }
+    })
+    fastify.get("/quizes/own", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const query = request.query as {
+            limit: string,
+            offset?: string
+            sort_by?: "created_at" | "likes" | "title",
+            reverse?: string
+        }
+        const limit = Number(query.limit) || 100;
+        const offset = Number(query.offset) || 0;
+        const sort_by = query.sort_by;
+        const userId = getUserId(request);
+        const reverse = query.reverse === 'true' || query.reverse === '1';
+        const ownQuizzes: (Quiz & { isLiked?: boolean } & { Favourite?: Favourite[] })[] = await getUserQuizes(limit, offset, userId, sort_by, reverse) ?? [];
+        ownQuizzes.forEach(q => { q.isLiked = q.Favourite && q.Favourite.length > 0; delete q.Favourite; });
+        reply.status(200).send({data: ownQuizzes})
+    });
+
+    //POST /quizzes stworzenie quizu, jezeli jest id w body, to aktualizacja quizu
+    fastify.post("/quizzes", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+            try{
+                const quizData=request.body as {
+                    quizId?: number,
+                    title: string,
+                    description: string,
+                    questions: Array<{
+                        content: string, 
+                        answers: Array<{ content: string, is_correct: boolean }>,
+                        partial_points?: boolean, 
+                        negative_points?: boolean, 
+                        max_points: number 
+                    }>,
+                    is_public: boolean
+                }
+                const userId= getUserId(request);
+                if(!quizData.title || !quizData.description || !quizData.questions || quizData.questions.length === 0){
+                    return reply.status(400).send({ message: 'Title, description info about public and questions are required.' });
+                }
+                if(quizData.quizId){
+                    const updatedQuiz = await editQuiz({
+                        id: quizData.quizId,
+                        title: quizData.title,
+                        description: quizData.description,
+                        is_public: quizData.is_public
+                    }, userId);
+                    if(!updatedQuiz){
+                        return reply.status(404).send({ message: 'Quiz not found.' });
+                    }
+                    await deleteQuestionsForQuiz(quizData.quizId);
+                    await addQuestionsToQuiz(quizData.quizId, quizData.questions);
+
+                    return reply.status(200).send({ data: updatedQuiz });
+
+                } else {
+                    const newQuiz = await addQuiz({
+                        title: quizData.title,
+                        description: quizData.description,
+                        is_public: quizData.is_public
+                    }, userId);
+                    if(newQuiz){
+                        await addQuestionsToQuiz(newQuiz.id, quizData.questions);
+                        return reply.status(201).send({data: newQuiz});
+                    } else {
+                        return reply.status(500).send({message:'Could not create quiz'});
+                    }
+                }
+            } catch (error) {
+                console.error("Error creating or updating quiz:", error);
+                return reply.status(500).send({ message: 'Internal server error.' });
+            }
+    })
+
+
+    //POST /quizzes/history/clear, usówa historię quzów, w których użytkownik brał udział (usuwa elemnty z game_players)
+    fastify.post("/quizzes/history/clear", {
+        preHandler: [fastify.authenticate],
+        handler: async (request, reply) => {
+            const success = await clearUserQuizHistory(getUserId(request));
+
+            if (success) {
+                reply.code(200).send({
+                    success: true,
+                    message: "History has been cleared."
+                });
+            } else {
+                reply.code(500).send({
+                    success: false,
+                    message: "Internal server error."
+                });
+            }
+        }
     });
 }
