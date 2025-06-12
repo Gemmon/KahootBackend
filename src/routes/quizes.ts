@@ -1,5 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite,deleteQuestionsForQuiz, addQuestionsToQuiz, clearUserQuizHistory } from "../db.js";
+import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getQuizHistoryByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite,deleteQuestionsForQuiz, addQuestionsToQuiz, clearUserQuizHistory } from "../db.js";
 import { get } from "http";
 import { Favourite, Quiz } from "@prisma/client";
 
@@ -122,6 +122,17 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         reply.status(200).send({data:quizes})
     });
 
+    fastify.get("/quizes/history", {preHandler: [fastify.authenticate]}, async(request, reply) => {
+        const query = request.query as {
+            limit?: string,
+        }
+        const userId = getUserId(request)
+        
+        const limit = query.limit == null ? 12 : Number(query.limit)
+        const quizes = await getQuizHistoryByUser(userId, limit)
+        reply.status(200).send({data:quizes})
+    });
+}
     fastify.post("/quizes/:id/favourite", {preHandler: [fastify.authenticate]}, async(request, reply) => {
         const quizId = parseInt((request.params as {id:string}).id)
         if(isNaN(quizId)){
