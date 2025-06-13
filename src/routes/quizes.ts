@@ -2,19 +2,20 @@ import { FastifyInstance } from "fastify";
 import { addQuiz, getQuizes, getQuizById, removeQuizById, editQuiz, getSuggestedQuizes, getLikedQuizzesByUser, getUserQuizes, addQuizFavourite, removeQuizFavourite,deleteQuestionsForQuiz, addQuestionsToQuiz } from "../db.js";
 import { get } from "http";
 import { Favourite, Quiz } from "@prisma/client";
+import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs/promises'
+import path from 'path';
 
 
 export interface QuizRequestBody{
     title: string,
     description: string,
-    is_public: boolean
+    is_public: boolean,
+    image?: string
 }
 
-export interface EditQuizRequestBody{
-    id: number,
-    title: string,
-    description: string,
-    is_public: boolean
+export interface EditQuizRequestBody extends QuizRequestBody {
+    id: number
 }
 
 const schema = {
@@ -24,6 +25,7 @@ const schema = {
             title: { type: 'string'},
             description: { type: 'string'},
             is_public: { type: 'boolean'},
+            image: { type: 'string' }
         },
         required: ['title', 'description', 'is_public'],
         additionalProperties: false
@@ -194,20 +196,32 @@ export default async function routes(fastify: FastifyInstance, options: any) {
                         answers: Array<{ content: string, is_correct: boolean }>,
                         partial_points?: boolean, 
                         negative_points?: boolean, 
-                        max_points: number 
+                        max_points: number ,
+                        time?: number
                     }>,
+                    image?: string,
                     is_public: boolean
                 }
                 const userId= getUserId(request);
                 if(!quizData.title || !quizData.description || !quizData.questions || quizData.questions.length === 0){
-                    return reply.status(400).send({ message: 'Title, description info about public and questions are required.' });
+                  return reply.status(400).send({ message: 'Title, description info about public and questions are required.' });
+                }
+                if (quizData.image) {
+                  const base64Image = quizData.image.split(';base64,').pop();
+                  if (base64Image) {
+                    const imageBuffer = Buffer.from(base64Image, 'base64');
+                    const imageId = uuidv4();
+                    await fs.writeFile(path.join(process.cwd(), 'public', `${imageId}.png`), imageBuffer);
+                    quizData.image = process.env.API_BASE_URL + `${imageId}.png`;
+                  }
                 }
                 if(quizData.quizId){
                     const updatedQuiz = await editQuiz({
                         id: quizData.quizId,
                         title: quizData.title,
                         description: quizData.description,
-                        is_public: quizData.is_public
+                        is_public: quizData.is_public,
+                        image: quizData.image
                     }, userId);
                     if(!updatedQuiz){
                         return reply.status(404).send({ message: 'Quiz not found.' });
@@ -221,7 +235,8 @@ export default async function routes(fastify: FastifyInstance, options: any) {
                     const newQuiz = await addQuiz({
                         title: quizData.title,
                         description: quizData.description,
-                        is_public: quizData.is_public
+                        is_public: quizData.is_public,
+                        image: quizData.image
                     }, userId);
                     if(newQuiz){
                         await addQuestionsToQuiz(newQuiz.id, quizData.questions);

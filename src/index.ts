@@ -10,6 +10,9 @@ import report from "./routes/reports.js";
 import tags from "./routes/tags.js";
 import comment from "./routes/comments.js";
 import setupSocket from "./multiplayer.js";
+import { existsSync, mkdir } from "fs";
+import fastifyStatic from "@fastify/static";
+import { join } from "path";
 
 var server: ReturnType<typeof createServer>;
 var io: Server;
@@ -42,6 +45,19 @@ fastify.register(comment)
 fastify.get("/", async (request, reply) => {
   return { hello: "world" };
 });
+
+if (!existsSync(join(process.cwd(), 'public')))
+  mkdir(join(process.cwd(), 'public'), { recursive: true }, (err) => {
+    if (err) {
+      fastify.log.error(err)
+      process.exit(1)
+    }
+  }
+)
+fastify.register(fastifyStatic, {
+  root: join(process.cwd(), 'public'),
+  prefix: '/public/'
+})
 
 fastify.ready((err) => {
   if (err) throw err;

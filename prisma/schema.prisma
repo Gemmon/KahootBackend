@@ -94,6 +94,7 @@ model Quiz {
   is_removed  Boolean?
   likes       Int         @default(0) @db.UnsignedInt
   rating_avg  Float       @default(0)
+  image       String?     @db.VarChar(500)
   Comment     Comment[]
   Favourite   Favourite[]
   Game        Game[]
