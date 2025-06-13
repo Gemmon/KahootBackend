@@ -18,6 +18,26 @@ export async function login(email: string, password: string): Promise<User | nul
   });
 }
 
+export async function changeUserData(id: number, data: {name?: string, avatar?: string}) {
+    const updateData: any = {};
+
+  if (data.name !== undefined) {
+    updateData.username = data.name;
+  }
+
+  // dodawanie avatara?
+  // if (data.avatar !== undefined) {
+  //   updateData.avatar = data.avatar;
+  // }
+
+  return await prisma.user.update({
+    data: updateData,
+    where: { 
+      id: id 
+    },
+  });
+}
+
 
 //Quizy
 export async function addQuiz(quizData: QuizRequestBody, userId: number){
@@ -312,6 +332,21 @@ export async function getUserQuizes(
   }
 }
 
+//Usuwanie historii quizów użytkownika (z tabeli game_players)
+export async function clearUserQuizHistory(userId: number) {
+  try {
+    await prisma.game_player.deleteMany({
+      where: {
+        user_id: userId,
+      },
+    });
+    return true;
+  } catch (error) {
+    console.error("Error clearing user quiz history:", error);
+    return false;
+  }
+}
+
 export async function findUserByEmail(userEmail:string) {
   try{
     const user = await prisma.user.findFirst({
@@ -527,7 +562,38 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
     return []
   }
 }
+export async function getQuizHistoryByUser(userId: number, limit: number){
+  try {
+    const games = await prisma.game.findMany({
+      where: {
+        Game_player: {
+          some: {
+            user_id: userId
+          }
+        },
+        finished_at: {
+          not: null
+        }
+      },
+      orderBy: {
+        finished_at: 'desc'
+      },
+      take: limit,
+      include: {
+        Game_player: {
+          where: {
+            user_id: userId
+          }
+        }
+      }
+    })
 
+    return games
+  } catch (error) {
+    console.log(error)
+    return []
+  }
+}
 export async function addQuizFavourite(quizId: number, userId: number) {
   try {
     const existingFavorite = await prisma.favourite.findFirst({
