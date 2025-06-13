@@ -46,10 +46,10 @@ model Favourite {
 model Game {
   id          Int           @id @unique(map: "id") @default(autoincrement())
   quiz_id     Int
-  host_id     Int
+  host_id     Int?
   started_at  DateTime      @db.DateTime(0)
   finished_at DateTime?     @db.DateTime(0)
-  User        User          @relation(fields: [host_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_ibfk_1")
+  User        User?         @relation(fields: [host_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_ibfk_1")
   Quiz        Quiz          @relation(fields: [quiz_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_ibfk_2")
   Game_player Game_player[]
 
@@ -64,6 +64,7 @@ model Game_player {
   guest_name String?   @db.VarChar(500)
   score      Int?
   played_at  DateTime? @db.DateTime(0)
+  is_host    Boolean   @default(false)
   Game       Game      @relation(fields: [game_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_player_ibfk_1")
   User       User?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Game_player_ibfk_2")
 
