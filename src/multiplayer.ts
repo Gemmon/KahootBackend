@@ -51,6 +51,10 @@ async function setQuiz(gameData: GameData, quizId: number | undefined) {
   if (!quiz) {
     return null;
   }
+  if (!quiz.image)
+    quiz.image = `https://placehold.co/300x150/004D1A/FFFFFF?text=${encodeURIComponent(quiz.title)}`
+  else
+    quiz.image = process.env.API_BASE_URL + quiz.image
   gameData.quiz = quiz;
   gameData.questionOrder = Array.from({ length: quiz.Question.length }, (_, i) => i);
   gameData.questionOrder.sort(() => Math.random() - 0.5);
@@ -86,7 +90,7 @@ export default function setupSocket(io: Server) {
         socket.username = existingPlayer.username;
         socket.host = existingPlayer.isHost || false;
         existingPlayer.socket = socket;
-        existingPlayer.answered = true; 
+        existingPlayer.answered = true;
         console.log(`Reconnected player: ${socket.username} (${socket.uuid})`);
       }
     }
