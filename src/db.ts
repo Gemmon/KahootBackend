@@ -115,6 +115,7 @@ export async function getQuizById(quizId: number, userId: number){
     ownerName: quiz.User.username,
     isOwner: quiz.created_by === userId,
     isLiked: quiz.Favourite.length > 0,
+    image: quiz.image
   }
 }
 
@@ -529,6 +530,7 @@ export async function getLikedQuizzesByUser(userId: number, sortBy: "created_at"
         id: true,
         title: true,
         created_at: true,
+        image: true,
         Rating: {
           select: {
             rating: true

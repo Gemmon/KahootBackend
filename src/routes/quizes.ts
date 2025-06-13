@@ -58,6 +58,12 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const limit = Number(query.limit)
         const offset = Number(query.offset)
         const quizes = await getQuizes(limit, offset);
+        quizes.forEach(q => {
+            if (!q.image)
+                q.image = `https://placehold.co/300x150/004D1A/FFFFFF?text=${encodeURIComponent(q.title)}`
+            else
+                q.image = process.env.API_BASE_URL + q.image
+        })
         reply.status(200).send({data:quizes})
     })
 
@@ -65,6 +71,10 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const quizId = parseInt((request.params as {id:string}).id)
         const quiz = await getQuizById(quizId, getUserId(request))
         if(quiz){
+            if (!quiz.image)
+                quiz.image = `https://placehold.co/300x150/004D1A/FFFFFF?text=${encodeURIComponent(quiz.title)}`
+            else
+                quiz.image = process.env.API_BASE_URL + quiz.image
             reply.status(200).send({quiz})
         } else {
             reply.status(404).send({message: 'Quiz not found'})
@@ -101,11 +111,18 @@ export default async function routes(fastify: FastifyInstance, options: any) {
             : "created_at"
 
         const likedQuizzes = await getLikedQuizzesByUser(userId, sortBy)
+        likedQuizzes.forEach(q => {
+            if (!q.image)
+                q.image = `https://placehold.co/300x150/004D1A/FFFFFF?text=${encodeURIComponent(q.title)}`
+            else
+                q.image = process.env.API_BASE_URL + q.image
+        })
 
-        const result = likedQuizzes.map(q => ({
+        const result = likedQuizzes.map((q: any) => ({
             id: q.id,
             title: q.title,
-            isLiked: true
+            isLiked: true,
+            image: q.image
         }))
 
         reply.status(200).send(result)
@@ -121,6 +138,12 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const offset = Number(query.offset) || 0;
         const sort_by = query.sort_by;
         const quizes = await getSuggestedQuizes(limit, offset, getUserId(request), sort_by) ?? [];
+        quizes.forEach(q => {
+            if (!q.image)
+                q.image = `https://placehold.co/300x150/004D1A/FFFFFF?text=${encodeURIComponent(q.title)}`
+            else
+                q.image = process.env.API_BASE_URL + q.image
+        })
         reply.status(200).send({data:quizes})
     });
 
@@ -191,6 +214,12 @@ export default async function routes(fastify: FastifyInstance, options: any) {
         const reverse = query.reverse === 'true' || query.reverse === '1';
         const ownQuizzes: (Quiz & { isLiked?: boolean } & { Favourite?: Favourite[] })[] = await getUserQuizes(limit, offset, userId, sort_by, reverse) ?? [];
         ownQuizzes.forEach(q => { q.isLiked = q.Favourite && q.Favourite.length > 0; delete q.Favourite; });
+        ownQuizzes.forEach(q => {
+            if (!q.image)
+                q.image = `https://placehold.co/300x150/004D1A/FFFFFF?text=${encodeURIComponent(q.title)}`
+            else
+                q.image = process.env.API_BASE_URL + q.image
+        })
         reply.status(200).send({data: ownQuizzes})
     });
 
@@ -222,7 +251,7 @@ export default async function routes(fastify: FastifyInstance, options: any) {
                     const imageBuffer = Buffer.from(base64Image, 'base64');
                     const imageId = uuidv4();
                     await fs.writeFile(path.join(process.cwd(), 'public', `${imageId}.png`), imageBuffer);
-                    quizData.image = process.env.API_BASE_URL + `${imageId}.png`;
+                    quizData.image = `${imageId}.png`;
                   }
                 }
                 if(quizData.quizId){
